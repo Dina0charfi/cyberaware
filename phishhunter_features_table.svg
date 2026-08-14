@@ -1,0 +1,72 @@
+<svg viewBox="0 0 960 660" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>Features de PhishHunter</title>
+<desc>Tableau des 12 features tabulaires et de l'embedding Word2Vec utilisés par le moteur de scoring de PhishHunter, avec leur explication.</desc>
+<rect width="960" height="660" fill="#FFFFFF"/>
+<text x="30" y="34" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#14181F">PhishHunter — Features du Scoring Engine</text>
+
+<!-- Header row -->
+<rect x="30" y="52" width="900" height="46" fill="#4338CA"/>
+<text x="50" y="80" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#FFFFFF">Feature</text>
+<text x="310" y="80" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">Explication</text>
+
+<!-- Rows -->
+<g font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="14.5" fill="#14181F">
+
+<rect x="30" y="98" width="900" height="42" fill="#F7F7FB"/>
+<text x="50" y="124" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#4338CA">has_urgency</text>
+<text x="310" y="124">Mot d'urgence détecté dans le texte (verify, suspend, act now...)</text>
+
+<rect x="30" y="140" width="900" height="42" fill="#FFFFFF"/>
+<text x="50" y="166" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#4338CA">url_count</text>
+<text x="310" y="166">Nombre de liens présents dans le texte</text>
+
+<rect x="30" y="182" width="900" height="42" fill="#F7F7FB"/>
+<text x="50" y="208" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#4338CA">has_ip_url</text>
+<text x="310" y="208">Lien pointant vers une adresse IP brute plutôt qu'un domaine</text>
+
+<rect x="30" y="224" width="900" height="42" fill="#FFFFFF"/>
+<text x="50" y="250" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#4338CA">word_count</text>
+<text x="310" y="250">Longueur du texte, en nombre de mots</text>
+
+<rect x="30" y="266" width="900" height="42" fill="#F7F7FB"/>
+<text x="50" y="292" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#4338CA">is_typosquat</text>
+<text x="310" y="292">Domaine proche d'une marque connue (1-2 lettres près)</text>
+
+<rect x="30" y="308" width="900" height="42" fill="#FFFFFF"/>
+<text x="50" y="334" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#4338CA">typosquat_distance</text>
+<text x="310" y="334">Distance exacte avec la marque connue la plus proche</text>
+
+<rect x="30" y="350" width="900" height="42" fill="#F7F7FB"/>
+<text x="50" y="376" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#4338CA">domain_entropy</text>
+<text x="310" y="376">Entropie du nom de domaine (plus aléatoire = plus suspect)</text>
+
+<rect x="30" y="392" width="900" height="42" fill="#FFFFFF"/>
+<text x="50" y="418" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#4338CA">domain_length</text>
+<text x="310" y="418">Longueur du nom de domaine</text>
+
+<rect x="30" y="434" width="900" height="42" fill="#F7F7FB"/>
+<text x="50" y="460" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#4338CA">domain_digit_ratio</text>
+<text x="310" y="460">Proportion de chiffres dans le domaine</text>
+
+<rect x="30" y="476" width="900" height="42" fill="#FFFFFF"/>
+<text x="50" y="502" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#4338CA">uppercase_ratio</text>
+<text x="310" y="502">Proportion de MAJUSCULES dans le texte</text>
+
+<rect x="30" y="518" width="900" height="42" fill="#F7F7FB"/>
+<text x="50" y="544" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#4338CA">exclamation_count</text>
+<text x="310" y="544">Nombre de points d'exclamation dans le texte</text>
+
+<rect x="30" y="560" width="900" height="42" fill="#FFFFFF"/>
+<text x="50" y="586" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#4338CA">has_sender_info</text>
+<text x="310" y="586">Expéditeur identifiable ou non (champ vide = suspect)</text>
+
+<rect x="30" y="602" width="900" height="42" fill="#EEF2FF"/>
+<text x="50" y="628" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" font-weight="700" fill="#4338CA">Word2Vec (200 dim)</text>
+<text x="310" y="628" font-weight="600">Vecteur qui résume le sens du texte (NLP, pas une règle)</text>
+
+</g>
+
+<!-- Borders -->
+<rect x="30" y="52" width="900" height="592" fill="none" stroke="#E5E7EB" stroke-width="1.5"/>
+<line x1="290" y1="52" x2="290" y2="644" stroke="#E5E7EB" stroke-width="1.5"/>
+</svg>

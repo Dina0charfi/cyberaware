@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+pydantic
+scikit-learn
+gensim
+numpy
+joblib
+huggingface_hub
+python-dotenv
+anthropic
+python-whois
+aiosmtpd
+requests
+groq

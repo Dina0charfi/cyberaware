@@ -1,0 +1,10 @@
+pandas
+scikit-learn
+lightgbm
+xgboost
+joblib
+fastapi
+uvicorn
+python-dotenv
+shap
+dnspython

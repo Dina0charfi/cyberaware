@@ -1,0 +1,10 @@
+{
+  "mehdi.t@banque-abc.example": {
+    "breaches": [],
+    "last_checked": "2026-08-03T23:18:47.460306+00:00"
+  },
+  "sara.b@banque-abc.example": {
+    "breaches": [],
+    "last_checked": "2026-08-03T23:18:47.460306+00:00"
+  }
+}

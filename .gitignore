@@ -1,0 +1,28 @@
+# Environnements virtuels Python (un par projet)
+venv/
+.venv/
+*/venv/
+*/*/venv/
+
+# Secrets réels — ne jamais committer, seuls les .env.example doivent l'être
+.env
+*/.env
+*/*/.env
+
+# Cache Python
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*/*/*/__pycache__/
+*.pyc
+
+# Logs et état générés à l'exécution (pas indispensables au dépôt)
+_launch_logs/
+*.log
+
+# Fichiers système Windows
+desktop.ini
+.DS_Store
+
+# Notebooks Jupyter — checkpoints auto-générés
+.ipynb_checkpoints/

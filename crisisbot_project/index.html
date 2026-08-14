@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrisisBot — Agent IA</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23DC2626'/><text x='50' y='68' font-size='56' text-anchor='middle'>🚨</text></svg>">
+<style>
+  :root {
+    /* Palette commune aux 5 dashboards (page claire, cartes blanches) */
+    --bg: #F1F2F6; --card: #FFFFFF;
+    --border: #E5E7EB; --border-strong: #D1D5DB;
+    --text: #14181F; --text-dim: #5B6472; --text-faint: #9AA2AD;
+    --accent: #DC2626; --accent-soft: #FEE2E2;
+    --safe: #16A34A; --safe-bg: #DCFCE7; --safe-text: #166534;
+    --info: #2563EB; --info-bg: #EFF6FF; --info-text: #1D4ED8;
+    --radius: 10px;
+    /* Panneau "console" sombre — motif repris des autres agents */
+    --panel: #10162A; --panel-2: #171F36;
+    --panel-border: rgba(255,255,255,0.08);
+    --panel-text: #E6EDF3; --panel-text-dim: #8B96A5; --panel-text-faint: #64748B;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .page { max-width: 640px; margin: 0 auto; padding: 32px 20px 64px; }
+
+  .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 13px; font-weight: 500; text-decoration: none; margin-bottom: 20px; }
+  .back-link:hover { color: var(--accent); }
+
+  .agent-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 8px; }
+  .agent-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+  .agent-label { font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: 0.06em; margin: 2px 0 2px; text-transform: uppercase; }
+  h1 { margin: 0; font-size: 30px; font-weight: 600; color: var(--text); }
+  .agent-desc { color: var(--text-dim); margin: 10px 0 24px; font-size: 15px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 14px; padding: 18px; margin-bottom: 20px; }
+  .webhook-tag { display: flex; align-items: center; gap: 8px; color: var(--panel-text-dim); font-size: 13px; font-weight: 500; margin-bottom: 10px; }
+  .status-line { font-family: var(--mono); font-size: 13.5px; color: var(--panel-text); padding-top: 8px; border-top: 1px solid var(--panel-border); }
+  .status-line.active { color: #93C5FD; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 20px; }
+  .card-label { font-size: 12px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 14px; }
+
+  .step-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px; border-radius: var(--radius); background: #F9FAFB; margin-bottom: 8px; transition: background 0.3s ease; }
+  .step-row:last-child { margin-bottom: 0; }
+  .step-row.done { background: var(--safe-bg); }
+  .step-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--border); color: var(--text-dim); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; transition: background 0.3s ease, color 0.3s ease; }
+  .step-row.done .step-icon { background: var(--safe); color: #fff; }
+  .step-body { min-width: 0; }
+  .step-title { font-size: 14.5px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .step-detail { font-size: 13px; color: var(--text-faint); margin-top: 2px; }
+  .step-row.done .step-detail { color: var(--text-dim); }
+  .step-tag { font-size: 11.5px; font-weight: 600; color: var(--info-text); background: var(--info-bg); padding: 2px 8px; border-radius: 999px; }
+
+  .incident-input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: #F9FAFB; color: var(--text); font-size: 13.5px; font-family: inherit; }
+  .incident-input:focus { outline: none; border-color: var(--accent); background: #fff; }
+  .preset-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .preset { font-size: 12px; font-weight: 500; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; color: var(--text-dim); cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+  .preset:hover { border-color: var(--accent); color: var(--accent); }
+  .preset:disabled { opacity: 0.5; cursor: default; }
+
+  button.simulate { width: 100%; padding: 14px; font-size: 14px; font-weight: 600; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); cursor: pointer; transition: opacity 0.15s; }
+  button.simulate:hover { opacity: 0.92; }
+  button.simulate:disabled { opacity: 0.6; cursor: default; }
+
+  .summary { display: none; margin-top: 16px; padding: 16px 18px; border-radius: var(--radius); background: var(--safe-bg); border: 1px solid var(--safe); color: var(--safe-text); font-size: 13.5px; line-height: 1.6; }
+  .summary.show { display: block; }
+  .summary strong { font-weight: 700; }
+
+  .note { text-align: center; color: var(--text-faint); font-size: 12px; font-style: italic; margin-top: 22px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <a class="back-link" href="http://localhost:8000/">← Retour aux agents IA</a>
+
+  <div class="agent-header">
+    <div class="agent-icon">🚨</div>
+    <div>
+      <p class="agent-label">Agent IA</p>
+      <h1>CrisisBot</h1>
+    </div>
+  </div>
+  <p class="agent-desc">En cas d'attaque détectée par un autre agent (Sentinel, NetScope, PhishHunter, DarkWatch...), guide l'équipe IT étape par étape et notifie automatiquement les bonnes personnes.</p>
+
+  <div class="panel">
+    <div class="webhook-tag" id="webhook-tag">🔌 Webhook → Slack / Teams / Email</div>
+    <div class="status-line" id="status-line">Connexion au backend…</div>
+  </div>
+
+  <div class="card">
+    <p class="card-label">Runbook de réponse automatique</p>
+    <div id="runbook-list"></div>
+  </div>
+
+  <div class="card">
+    <p class="card-label">Simuler un incident</p>
+    <input type="text" id="incident-input" class="incident-input" value="Rançongiciel détecté sur un poste" placeholder="Décris l'incident (ex: exfiltration de données détectée)">
+    <div class="preset-row">
+      <button type="button" class="preset" data-value="Rançongiciel détecté sur un poste">Rançongiciel</button>
+      <button type="button" class="preset" data-value="Exfiltration de données vers un domaine suspect">Exfiltration DNS</button>
+      <button type="button" class="preset" data-value="Compte email compromis — tentative de phishing bloquée">Phishing</button>
+      <button type="button" class="preset" data-value="Connexion anormale détectée hors horaires">Connexion anormale</button>
+    </div>
+  </div>
+
+  <button class="simulate" id="simulate-btn" disabled>🧪 Lancer la simulation</button>
+
+  <div id="summary" class="summary"></div>
+
+  <p class="note">Exemple illustratif — données fictives, aucune action réelle n'est effectuée.</p>
+</div>
+
+<script>
+const API_BASE = ""; // même origine — servi par ce même backend
+
+// Copie du runbook côté client, pour l'affichage "en attente" avant simulation.
+// Les vraies données (durées, libellés) viennent du serveur au moment du clic.
+const STEPS = [
+  { id: "isolate_host", icon: "🔒", title: "Isoler le poste affecté", detail: "Débranchement réseau automatique du poste concerné pour stopper la propagation." },
+  { id: "notify_ciso", icon: "🛡️", title: "Notifier le RSSI", detail: "Alerte immédiate envoyée avec les indicateurs de compromission détectés." },
+  { id: "notify_direction", icon: "📊", title: "Notifier la Direction", detail: "Résumé exécutif transmis pour déclenchement éventuel de la cellule de crise." },
+  { id: "activate_crisis_cell", icon: "👥", title: "Activer la cellule de crise", detail: "Convocation automatique des référents IT, sécurité et communication sur un canal dédié." },
+  { id: "prepare_comms", icon: "📣", title: "Préparer la communication interne", detail: "Modèle de message prêt pour informer les équipes sans créer de panique." },
+];
+
+const statusLine = document.getElementById("status-line");
+const webhookTag = document.getElementById("webhook-tag");
+const list = document.getElementById("runbook-list");
+const btn = document.getElementById("simulate-btn");
+const summary = document.getElementById("summary");
+const incidentInput = document.getElementById("incident-input");
+
+// Cliquer un preset remplit le champ ET lance direct la simulation —
+// pas besoin d'un second clic sur "Lancer la simulation".
+document.querySelectorAll(".preset").forEach(p => {
+  p.addEventListener("click", () => {
+    incidentInput.value = p.dataset.value;
+    runSimulation(p.dataset.value);
+  });
+});
+
+const SOURCE_LABELS = {
+  manual: "déclenché manuellement",
+  darkwatch: "déclenché par DarkWatch",
+  netscope: "déclenché par NetScope",
+  phishhunter: "déclenché par PhishHunter",
+  sentinel: "déclenché par Sentinel",
+};
+
+function renderSteps(activeId = null, doneIds = []) {
+  list.innerHTML = "";
+  STEPS.forEach(s => {
+    const row = document.createElement("div");
+    const isDone = doneIds.includes(s.id);
+    row.className = "step-row" + (isDone ? " done" : "");
+    row.id = `step-${s.id}`;
+    row.innerHTML = `
+      <div class="step-icon">${isDone ? "✅" : s.icon}</div>
+      <div class="step-body">
+        <div class="step-title">${s.title}${s.id === activeId ? '<span class="step-tag">en cours…</span>' : ""}</div>
+        <div class="step-detail">${s.detail}</div>
+      </div>`;
+    list.appendChild(row);
+  });
+}
+
+function markDone(id, overrideDetail = null) {
+  const row = document.getElementById(`step-${id}`);
+  if (!row) return;
+  row.classList.add("done");
+  row.querySelector(".step-icon").textContent = "✅";
+  const tag = row.querySelector(".step-tag");
+  if (tag) tag.remove();
+  if (overrideDetail) {
+    row.querySelector(".step-detail").textContent = overrideDetail;
+  }
+}
+
+function markActive(id) {
+  const row = document.getElementById(`step-${id}`);
+  if (!row) return;
+  const title = row.querySelector(".step-title");
+  if (!title.querySelector(".step-tag")) {
+    title.insertAdjacentHTML("beforeend", '<span class="step-tag">en cours…</span>');
+  }
+}
+
+async function loadStatus() {
+  try {
+    const res = await fetch(`${API_BASE}/api/status`);
+    if (!res.ok) throw new Error("bad status");
+    const data = await res.json();
+    webhookTag.textContent = data.slack_configured
+      ? "🔌 Webhook → Slack (connecté ✅) / Teams / Email"
+      : "🔌 Webhook → Slack / Teams / Email (non configuré — mode simulé)";
+    if (data.days_since !== null && data.days_since !== undefined) {
+      const sourceLabel = SOURCE_LABELS[data.last_source] || null;
+      const when = data.days_since === 0 ? "aujourd'hui" : `il y a ${data.days_since} jour${data.days_since === 1 ? "" : "s"}`;
+      statusLine.textContent = `Aucun incident actif — dernière simulation ${when}` + (sourceLabel ? ` (${sourceLabel})` : "") + ".";
+    } else {
+      statusLine.textContent = "Aucun incident actif — CrisisBot est en veille, prêt à se déclencher automatiquement.";
+    }
+    btn.disabled = false;
+  } catch (e) {
+    statusLine.textContent = "Backend injoignable — lance server.py.";
+  }
+}
+
+async function runSimulation(incidentText) {
+  btn.disabled = true;
+  btn.textContent = "simulation en cours…";
+  document.querySelectorAll(".preset").forEach(p => p.disabled = true);
+  summary.classList.remove("show");
+  renderSteps();
+
+  const incident = (incidentText || incidentInput.value.trim() || "Incident de sécurité non spécifié");
+
+  let data;
+  try {
+    const res = await fetch(`${API_BASE}/api/simulate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ incident }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = await res.json();
+  } catch (e) {
+    statusLine.textContent = `Erreur : backend injoignable (${e.message}).`;
+    btn.disabled = false;
+    btn.textContent = "🧪 Lancer la simulation";
+    document.querySelectorAll(".preset").forEach(p => p.disabled = false);
+    return;
+  }
+
+  statusLine.className = "status-line active";
+  statusLine.textContent = `Incident simulé en cours de traitement… (${data.incident})`;
+
+  // Anime les étapes dans l'ordre, avec un timing proportionnel aux durées
+  // réelles renvoyées par le serveur, compressé pour rester lisible à l'écran.
+  const scale = 4200 / data.total_seconds; // ~4.2s d'animation au total
+  let elapsed = 0;
+  const doneIds = [];
+
+  data.steps.forEach((s, i) => {
+    elapsed += s.duration * scale;
+    setTimeout(() => {
+      if (i > 0) markDone(data.steps[i - 1].id, data.steps[i - 1].message || null);
+      markActive(s.id);
+    }, elapsed - s.duration * scale);
+
+    if (i === data.steps.length - 1) {
+      setTimeout(() => {
+        markDone(s.id, s.message || null);
+        summary.classList.add("show");
+        const llmNote = data.llm_used_for_comms
+          ? " · Message de communication interne rédigé par IA (Groq) selon l'incident réel."
+          : "";
+        const notifNote = data.notification_sent
+          ? " · ✅ Message RÉELLEMENT envoyé sur Slack."
+          : " · (Slack non configuré — notification simulée uniquement.)";
+        summary.innerHTML = `✓ Incident traité de bout en bout en <strong>${data.total_label}</strong> (simulation) · Toutes les parties prenantes ont été notifiées automatiquement (${data.webhook_targets.join(" / ")}) · Rapport post-incident généré pour le RSSI (démo — les autres actions restent simulées).${llmNote}${notifNote}`;
+        statusLine.textContent = "Aucun incident actif — dernière simulation à l'instant.";
+        btn.disabled = false;
+        btn.textContent = "🧪 Relancer une simulation →";
+        document.querySelectorAll(".preset").forEach(p => p.disabled = false);
+      }, elapsed + 300);
+    }
+  });
+}
+
+btn.addEventListener("click", () => runSimulation());
+
+renderSteps();
+loadStatus();
+</script>
+</body>
+</html>

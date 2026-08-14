@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DarkWatch — Agent IA (démo gratuite)</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c5cff'/><text x='50' y='68' font-size='56' text-anchor='middle'>🌑</text></svg>">
+<style>
+  :root {
+    --bg: #f4f6fb;
+    --card-dark: #10162a;
+    --card-dark-2: #171f36;
+    --purple: #7c5cff;
+    --purple-dark: #6b46e5;
+    --red: #ef4444;
+    --red-dark: #dc2626;
+    --text-dim: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: #1e293b;
+    padding: 32px 24px 80px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  .back { color: #6b7280; font-size: 14px; text-decoration: none; }
+  .badge {
+    display: inline-block;
+    color: var(--purple-dark);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    margin-top: 18px;
+  }
+  h1 { font-size: 30px; margin: 4px 0 12px; }
+  .desc { color: #475569; line-height: 1.5; margin-bottom: 24px; }
+  .panel {
+    background: var(--card-dark);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+  .panel-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #cbd5e1;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 4px 6px 14px;
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--card-dark-2);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 14px;
+    color: #e2e8f0;
+  }
+  .row:last-child { margin-bottom: 0; }
+  .status { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; font-size: 13px; }
+  .status.waiting { color: #64748b; }
+  .status.ok { color: #34d399; }
+  .status.leak { color: #f87171; font-weight: 700; }
+
+  button.scan {
+    width: 100%;
+    background: var(--purple);
+    color: white;
+    border: none;
+    padding: 16px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  button.scan:hover { background: var(--purple-dark); }
+  button.scan:disabled { opacity: 0.6; cursor: default; }
+
+  .note { text-align: center; color: #94a3b8; font-size: 12px; font-style: italic; margin-top: 18px; }
+
+  .alert {
+    display: none;
+    background: #fff5f5;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 18px;
+    margin-top: 20px;
+  }
+  .alert.show { display: block; }
+  .alert-tag {
+    display: inline-block;
+    background: var(--red);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+  }
+  .alert p { margin: 0 0 14px; line-height: 1.5; color: #334155; font-size: 14px; }
+  .alert .card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    font-size: 14px;
+  }
+  .alert .card .sub { color: #64748b; font-size: 12px; }
+  button.reset {
+    width: 100%;
+    background: var(--red);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button.reset:hover { background: var(--red-dark); }
+
+  .quickcheck {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .quickcheck input {
+    flex: 1;
+    padding: 13px 14px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    font-size: 14px;
+  }
+  .quickcheck input:focus { outline: 2px solid var(--purple); border-color: var(--purple); }
+  .quickcheck button {
+    background: var(--purple);
+    color: white;
+    border: none;
+    padding: 0 20px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .quickcheck button:hover { background: var(--purple-dark); }
+  .quickresult {
+    margin: -10px 0 24px;
+    font-size: 14px;
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+  .quickresult.ok { background: #ecfdf5; color: #047857; }
+  .quickresult.leak { background: #fef2f2; color: #b91c1c; font-weight: 600; }
+  .quickresult.hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="http://localhost:8000/">← Retour aux agents IA</a>
+  <div class="badge">🌑 AGENT IA</div>
+  <h1>DarkWatch <span style="font-size:13px; color:#94a3b8; font-weight:500;">(version gratuite)</span></h1>
+  <p class="desc">
+    Surveille si les emails de ton organisation apparaissent dans des fuites de
+    données publiées, via l'API gratuite XposedOrNot. Aucun modèle IA,
+    aucune donnée d'entraînement : détection par recherche dans une base
+    de fuites publique.
+  </p>
+
+  <div class="quickcheck">
+    <input type="email" id="quickEmail" placeholder="Tape n'importe quel email à vérifier…">
+    <button id="quickBtn">Vérifier</button>
+  </div>
+  <div class="quickresult hidden" id="quickResult"></div>
+
+  <div class="panel">
+    <div class="panel-head">🔌 API XposedOrNot (gratuite, sans clé)</div>
+    <div id="rows"></div>
+  </div>
+
+  <button class="scan" id="scanBtn">Lancer le scan dark web avec DarkWatch →</button>
+  <p class="note">Comptes définis dans emails_example.txt — données réelles si tu y mets de vraies adresses.</p>
+
+  <div class="alert" id="alert"></div>
+</div>
+
+<script>
+const rowsEl = document.getElementById('rows');
+const scanBtn = document.getElementById('scanBtn');
+const alertEl = document.getElementById('alert');
+
+async function loadEmails() {
+  const res = await fetch('/api/emails');
+  const data = await res.json();
+  rowsEl.innerHTML = '';
+  data.emails.forEach(email => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.id = 'row-' + btoa(email);
+    row.innerHTML = `<span>${email}</span><span class="status waiting">En attente…</span>`;
+    rowsEl.appendChild(row);
+  });
+}
+
+function setStatus(email, cls, text) {
+  const row = document.getElementById('row-' + btoa(email));
+  if (!row) return;
+  const status = row.querySelector('.status');
+  status.className = 'status ' + cls;
+  status.textContent = text;
+}
+
+async function runScan() {
+  scanBtn.disabled = true;
+  scanBtn.textContent = 'Scan en cours…';
+  alertEl.classList.remove('show');
+  alertEl.innerHTML = '';
+
+  const res = await fetch('/api/scan');
+  const data = await res.json();
+
+  if (data.error === 'rate_limit') {
+    quickResult.className = 'quickresult leak';
+    quickResult.textContent = '⏳ ' + data.message;
+    scanBtn.disabled = false;
+    scanBtn.textContent = 'Lancer le scan dark web avec DarkWatch →';
+    return;
+  }
+
+  data.results.forEach(r => {
+    if (r.found) {
+      setStatus(r.email, 'leak', 'Fuite détectée');
+      showAlert(r);
+    } else {
+      setStatus(r.email, 'ok', 'OK — aucune fuite');
+    }
+  });
+
+  scanBtn.disabled = false;
+  scanBtn.textContent = 'Relancer le scan dark web avec DarkWatch →';
+}
+
+function showAlert(r) {
+  alertEl.classList.add('show');
+  const div = document.createElement('div');
+  const aiBlock = r.ai_summary
+    ? `<div style="background:#eef2ff; border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:13px; color:#3730a3;">
+         <strong>🤖 Résumé IA (Groq) :</strong><br>${r.ai_summary}
+       </div>`
+    : '';
+  div.innerHTML = `
+    <span class="alert-tag">FUITE DÉTECTÉE</span>
+    <p>Fuite « ${r.breaches.join(', ')} » — compte trouvé dans une base de fuites publiée.
+    Risque estimé : <strong>${r.risk_label || 'N/A'}</strong> (score ${r.risk_score ?? '?'} — calculé par l'API, pas par un modèle entraîné ici).</p>
+    ${aiBlock}
+    <div class="card">
+      <div>
+        <div>${r.email}</div>
+      </div>
+    </div>
+    <button class="reset" data-email="${r.email}">🔒 Forcer la réinitialisation du mot de passe</button>
+  `;
+  alertEl.appendChild(div);
+
+  div.querySelector('.reset').addEventListener('click', async (e) => {
+    const btn = e.target;
+    btn.disabled = true;
+    btn.textContent = 'Envoi en cours…';
+    const res = await fetch('/api/reset?email=' + encodeURIComponent(r.email));
+    const data = await res.json();
+    btn.textContent = '✅ ' + data.message;
+  });
+}
+
+const quickEmail = document.getElementById('quickEmail');
+const quickBtn = document.getElementById('quickBtn');
+const quickResult = document.getElementById('quickResult');
+
+async function runQuickCheck() {
+  const email = quickEmail.value.trim();
+  if (!email) return;
+
+  quickBtn.disabled = true;
+  quickBtn.textContent = '…';
+  quickResult.className = 'quickresult hidden';
+  alertEl.classList.remove('show');
+  alertEl.innerHTML = '';
+
+  try {
+    const res = await fetch('/api/check?email=' + encodeURIComponent(email));
+    const r = await res.json();
+
+    if (r.error === 'rate_limit') {
+      quickResult.className = 'quickresult leak';
+      quickResult.textContent = '⏳ ' + r.message;
+    } else if (r.found) {
+      quickResult.className = 'quickresult leak';
+      quickResult.textContent = `⚠️ ${email} apparaît dans : ${r.breaches.join(', ')}`;
+      showAlert(r);
+    } else {
+      quickResult.className = 'quickresult ok';
+      quickResult.textContent = `✅ ${email} — aucune fuite connue.`;
+    }
+  } catch (e) {
+    quickResult.className = 'quickresult leak';
+    quickResult.textContent = 'Erreur réseau — le serveur tourne-t-il toujours ?';
+  }
+
+  quickBtn.disabled = false;
+  quickBtn.textContent = 'Vérifier';
+}
+
+quickBtn.addEventListener('click', runQuickCheck);
+quickEmail.addEventListener('keydown', (e) => { if (e.key === 'Enter') runQuickCheck(); });
+
+scanBtn.addEventListener('click', runScan);
+loadEmails();
+</script>
+</body>
+</html>

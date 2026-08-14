@@ -1,0 +1,166 @@
+[
+  {
+    "domain": "host-04710.sample",
+    "user": "Nora K.",
+    "ml_score": 75.1,
+    "isolated_at": "2026-07-28T12:44:14.913109+00:00"
+  },
+  {
+    "domain": "host-101699.sample",
+    "user": "Nora K.",
+    "ml_score": 75.1,
+    "isolated_at": "2026-07-28T12:59:06.064013+00:00"
+  },
+  {
+    "domain": "host-70279.sample",
+    "user": "Yassine B.",
+    "ml_score": 75.1,
+    "isolated_at": "2026-08-04T16:19:47.321556+00:00"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-04T17:34:36.610939+00:00"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-04T17:46:32.959879+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-04T17:50:50.371779+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-04T17:59:31.651675+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-09T11:04:01.864445+00:00",
+    "source": "webhook"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-09T11:14:39.343309+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-10T08:08:46.324094+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-10T08:13:17.283298+00:00",
+    "source": "webhook"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-10T08:43:59.526585+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-10T08:51:07.058405+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-27288.sample",
+    "user": "Yassine B.",
+    "ml_score": 75.1,
+    "isolated_at": "2026-08-10T11:23:59.307401+00:00",
+    "source": "manual"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-10T11:38:15.766952+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-10T11:43:43.386431+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-10T11:52:16.324831+00:00",
+    "source": "webhook"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-10T12:01:47.949448+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-11T07:09:24.675083+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-11T07:09:52.127300+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-11T08:17:38.096856+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-11T08:18:08.003396+00:00",
+    "source": "webhook"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-14T10:00:44.533284+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-14T10:10:26.609638+00:00",
+    "source": "webhook"
+  }
+]

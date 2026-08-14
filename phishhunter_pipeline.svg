@@ -1,0 +1,124 @@
+<svg viewBox="0 0 1250 1080" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>Pipeline de l'agent PhishHunter</title>
+<desc>Schéma du pipeline PhishHunter : un email entrant est transformé en 12 features tabulaires plus un embedding Word2Vec, scoré par une Régression Logistique, puis expliqué par un LLM. Deux chemins de décision existent : un blocage manuel par l'analyste, ou un mode agent autonome où un LLM avec tool calling structuré peut consulter une recherche WHOIS puis choisir entre bloquer l'email, escalader vers un humain, ou livrer normalement, avec repli automatique vers l'escalade humaine en cas d'échec du LLM. Les décisions de blocage ou d'escalade notifient CrisisBot.</desc>
+
+<style>
+  .box { fill: #ffffff; stroke: #444444; stroke-width: 1.5; }
+  .box-accent { fill: #ffffff; stroke: #14285a; stroke-width: 2; }
+  .title { font-family: sans-serif; font-size: 15.5px; font-weight: 600; fill: #111111; }
+  .title-sm { font-family: sans-serif; font-size: 13px; font-weight: 600; fill: #111111; }
+  .subtitle { font-family: sans-serif; font-size: 12px; fill: #555555; }
+  .step-label { font-family: sans-serif; font-size: 11px; fill: #555555; letter-spacing: 0.04em; }
+  .arrow { stroke: #444444; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+  .arrow-accent { stroke: #14285a; stroke-width: 1.5; fill: none; marker-end: url(#arrow-accent); }
+  .connector { stroke: #444444; stroke-width: 1.5; fill: none; }
+  .connector-accent { stroke: #14285a; stroke-width: 1.5; fill: none; }
+  .fallback { stroke: #14285a; stroke-width: 1.3; fill: none; stroke-dasharray: 5 4; marker-end: url(#arrow-accent); }
+</style>
+
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#444444"/>
+  </marker>
+  <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#14285a"/>
+  </marker>
+</defs>
+
+<!-- Step 1: incoming email -->
+<rect x="475" y="20" width="300" height="62" rx="10" class="box"/>
+<text x="625" y="46" text-anchor="middle" class="title">Email entrant</text>
+<text x="625" y="66" text-anchor="middle" class="subtitle">expéditeur, objet, corps</text>
+
+<line x1="625" y1="82" x2="625" y2="112" class="arrow"/>
+
+<!-- Step 2: feature extraction -->
+<rect x="435" y="112" width="380" height="80" rx="10" class="box"/>
+<text x="625" y="138" text-anchor="middle" class="title">Extraction de features</text>
+<text x="625" y="158" text-anchor="middle" class="subtitle">12 tabulaires + Word2Vec</text>
+<text x="625" y="176" text-anchor="middle" class="step-label">embedding 200 dimensions, moyenné</text>
+
+<line x1="625" y1="192" x2="625" y2="222" class="arrow"/>
+
+<!-- Step 3: Logistic Regression -->
+<rect x="475" y="222" width="300" height="62" rx="10" class="box"/>
+<text x="625" y="248" text-anchor="middle" class="title">Régression Logistique</text>
+<text x="625" y="268" text-anchor="middle" class="subtitle">risk_score 0–100</text>
+
+<line x1="625" y1="284" x2="625" y2="314" class="arrow"/>
+
+<!-- fan out to 3 -->
+<line x1="295" y1="314" x2="955" y2="314" class="connector"/>
+<line x1="295" y1="314" x2="295" y2="344" class="arrow"/>
+<line x1="625" y1="314" x2="625" y2="344" class="arrow"/>
+<line x1="955" y1="314" x2="955" y2="344" class="arrow-accent"/>
+
+<rect x="165" y="344" width="260" height="66" rx="10" class="box"/>
+<text x="295" y="370" text-anchor="middle" class="title-sm">Explication LLM (Groq)</text>
+<text x="295" y="390" text-anchor="middle" class="subtitle">texte lisible, ne décide pas</text>
+
+<rect x="495" y="344" width="260" height="66" rx="10" class="box"/>
+<text x="625" y="370" text-anchor="middle" class="title-sm">Bloquer l'email (analyste)</text>
+<text x="625" y="390" text-anchor="middle" class="subtitle">décision manuelle sur le score</text>
+
+<rect x="825" y="344" width="260" height="66" rx="10" class="box-accent"/>
+<text x="955" y="370" text-anchor="middle" class="title-sm">Agent autonome (LLM)</text>
+<text x="955" y="390" text-anchor="middle" class="subtitle">tool calling structuré</text>
+
+<!-- D1, D2 go straight down to merge -->
+<line x1="295" y1="410" x2="295" y2="900" class="connector"/>
+<line x1="625" y1="410" x2="625" y2="900" class="connector"/>
+
+<!-- D3 -> WHOIS tool -->
+<line x1="955" y1="410" x2="955" y2="440" class="arrow-accent"/>
+<rect x="825" y="440" width="260" height="66" rx="10" class="box-accent"/>
+<text x="955" y="466" text-anchor="middle" class="title-sm">check_domain_age (WHOIS)</text>
+<text x="955" y="486" text-anchor="middle" class="subtitle">appelé si cas ambigu</text>
+
+<line x1="955" y1="506" x2="955" y2="536" class="arrow-accent"/>
+
+<!-- fan to 3 final actions -->
+<line x1="795" y1="536" x2="1115" y2="536" class="connector-accent"/>
+<line x1="795" y1="536" x2="795" y2="566" class="arrow-accent"/>
+<line x1="955" y1="536" x2="955" y2="566" class="arrow-accent"/>
+<line x1="1115" y1="536" x2="1115" y2="566" class="arrow"/>
+
+<rect x="710" y="566" width="170" height="66" rx="10" class="box-accent"/>
+<text x="795" y="594" text-anchor="middle" class="title-sm">block_email</text>
+<text x="795" y="612" text-anchor="middle" class="subtitle">email bloqué</text>
+
+<rect x="870" y="566" width="170" height="66" rx="10" class="box-accent"/>
+<text x="955" y="594" text-anchor="middle" class="title-sm">escalate_to_human</text>
+<text x="955" y="612" text-anchor="middle" class="subtitle">analyste alerté</text>
+
+<rect x="1030" y="566" width="170" height="66" rx="10" class="box"/>
+<text x="1115" y="594" text-anchor="middle" class="title-sm">deliver_normally</text>
+<text x="1115" y="612" text-anchor="middle" class="subtitle">email livré</text>
+
+<!-- fallback: LLM failure bypasses WHOIS straight to escalate_to_human -->
+<path d="M 1085 377 C 1190 420, 1190 520, 970 566" class="fallback"/>
+<text x="1150" y="450" text-anchor="middle" class="step-label">repli si échec LLM</text>
+
+<!-- block_email + escalate_to_human notify CrisisBot -->
+<line x1="795" y1="632" x2="795" y2="662" class="connector-accent"/>
+<line x1="955" y1="632" x2="955" y2="662" class="connector-accent"/>
+<line x1="795" y1="662" x2="955" y2="662" class="connector-accent"/>
+<line x1="875" y1="662" x2="875" y2="692" class="arrow-accent"/>
+
+<rect x="765" y="692" width="220" height="66" rx="10" class="box-accent"/>
+<text x="875" y="718" text-anchor="middle" class="title-sm">Webhook CrisisBot</text>
+<text x="875" y="738" text-anchor="middle" class="subtitle">notification automatique</text>
+
+<!-- deliver_normally + CrisisBot merge down to dashboard -->
+<line x1="1115" y1="632" x2="1115" y2="900" class="connector"/>
+<line x1="875" y1="758" x2="875" y2="900" class="connector"/>
+
+<line x1="295" y1="900" x2="1115" y2="900" class="connector"/>
+<line x1="705" y1="900" x2="705" y2="930" class="arrow"/>
+
+<rect x="565" y="930" width="280" height="70" rx="10" class="box"/>
+<text x="705" y="956" text-anchor="middle" class="title">Tableau de bord PhishHunter</text>
+<text x="705" y="976" text-anchor="middle" class="subtitle">détail du score et raisonnement</text>
+
+<text x="625" y="1045" text-anchor="middle" class="step-label">PhishHunter est la seule exception du projet où un LLM peut choisir seul l'action finale</text>
+</svg>

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "sdh2394-2011-04-09",
+    "user": "SDH2394",
+    "pc": "PC-3243",
+    "department": "4 - Engineering",
+    "date": "2011-04-09",
+    "heure": "12:04",
+    "features": {
+      "hour": 12,
+      "is_off_hours": 0,
+      "is_new_device": 1,
+      "is_weekend": 1,
+      "is_holiday": 1
+    }
+  },
+  {
+    "id": "ljc0191-2010-09-11",
+    "user": "LJC0191",
+    "pc": "PC-0152",
+    "department": "4 - Engineering",
+    "date": "2010-09-11",
+    "heure": "17:41",
+    "features": {
+      "hour": 17,
+      "is_off_hours": 1,
+      "is_new_device": 1,
+      "is_weekend": 1,
+      "is_holiday": 1
+    }
+  },
+  {
+    "id": "tkm1539-2010-05-01",
+    "user": "TKM1539",
+    "pc": "PC-6953",
+    "department": "3 - Assembly",
+    "date": "2010-05-01",
+    "heure": "16:33",
+    "features": {
+      "hour": 16,
+      "is_off_hours": 0,
+      "is_new_device": 1,
+      "is_weekend": 1,
+      "is_holiday": 1
+    }
+  }
+]

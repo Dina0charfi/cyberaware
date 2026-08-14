@@ -1,0 +1,4 @@
+# Exemple de liste d'emails à surveiller (scénario banque, comme la démo CyberAware)
+# Une adresse par ligne. Les lignes commençant par # sont ignorées.
+mehdi.t@banque-abc.example
+sara.b@banque-abc.example

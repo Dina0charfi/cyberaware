@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhishHunter — Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234338CA'/><text x='50' y='68' font-size='56' text-anchor='middle'>🎣</text></svg>">
+<style>
+  :root {
+    --bg: #F1F2F6;
+    --card: #FFFFFF;
+    --border: #E5E7EB;
+    --text: #111827;
+    --text-muted: #6B7280;
+    --accent: #4338CA;
+    --accent-soft: #EEF2FF;
+    --safe-bg: #DCFCE7;   --safe-text: #166534;
+    --warn-bg: #FEF3C7;   --warn-text: #92400E;
+    --danger-bg: #FEE2E2; --danger-text: #B91C1C;
+    --danger: #DC2626;    --danger-hover: #B91C1C;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+
+  /* ---------- Header ---------- */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    margin-bottom: 18px;
+  }
+  .back-link:hover { color: var(--accent); }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 18px;
+  }
+
+  .pulse {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #22C55E;
+    box-shadow: 0 0 0 0 rgba(34,197,94,0.6);
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+    70%  { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+    100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+  }
+
+  .actions { display: flex; gap: 8px; }
+
+  button.btn {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  button.btn:hover { background: #F9FAFB; border-color: #D1D5DB; }
+  button.btn:disabled { opacity: 0.5; cursor: default; }
+
+  button.btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  button.btn-primary:hover { background: #3730A3; }
+
+  /* ---------- Card commune ---------- */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  /* ---------- Liste des emails ---------- */
+  .email-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s ease;
+  }
+  .email-row:last-child { border-bottom: none; }
+  .email-row:hover { background: #FAFAFB; }
+  .email-row.selected { background: var(--accent-soft); }
+
+  .email-meta { min-width: 0; }
+  .email-subject {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .email-sender {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .score-pill {
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 999px;
+  }
+  .score-pill.safe   { background: var(--safe-bg);   color: var(--safe-text); }
+  .score-pill.warn   { background: var(--warn-bg);   color: var(--warn-text); }
+  .score-pill.danger { background: var(--danger-bg); color: var(--danger-text); }
+
+  .blocked-tag {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    margin-left: 8px;
+  }
+
+  /* ---------- État vide ---------- */
+  .empty-state {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+  .empty-state p { margin: 0 0 16px; font-size: 14px; }
+
+  /* ---------- Panneau de détail ---------- */
+  .detail-card { display: none; }
+  .detail-card.visible { display: block; }
+
+  .detail-score-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-badge {
+    font-size: 12.5px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    padding: 6px 12px;
+    border-radius: 999px;
+  }
+  .detail-badge.safe   { background: var(--safe-bg);   color: var(--safe-text); }
+  .detail-badge.warn   { background: var(--warn-bg);   color: var(--warn-text); }
+  .detail-badge.danger { background: var(--danger-bg); color: var(--danger-text); }
+
+  .detail-body { padding: 18px; }
+
+  .detail-subject { font-size: 16px; font-weight: 700; margin: 0 0 4px; }
+  .detail-sender { font-size: 13.5px; color: var(--text-muted); margin: 0 0 18px; }
+
+  .reason-list { list-style: none; margin: 0 0 18px; padding: 0; }
+  .reason-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+  .reason-list li .icon { flex-shrink: 0; margin-top: 1px; }
+
+  .explanation-box {
+    background: #F9FAFB;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre-line;
+    margin-bottom: 18px;
+  }
+  .explanation-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  button.btn-block {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: var(--danger);
+    color: white;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  button.btn-block:hover { background: var(--danger-hover); }
+  button.btn-block:disabled { background: #9CA3AF; cursor: default; }
+
+  .section-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 10px 2px;
+  }
+
+  .webhook-hint {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border);
+  }
+  .webhook-hint code {
+    background: #F3F4F6;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <a class="back-link" href="http://localhost:8000/">← Retour aux agents IA</a>
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="pulse"></span>
+      PhishHunter
+    </div>
+    <div class="actions">
+      <button class="btn" id="btn-refresh">Actualiser</button>
+      <button class="btn btn-primary" id="btn-seed">Charger des exemples</button>
+    </div>
+  </div>
+
+  <p class="section-label">Boîte surveillée</p>
+  <div class="card">
+    <div class="card-header">
+      🪝 Webhook → Exchange / Google Workspace — boîte de réception surveillée
+    </div>
+    <div id="email-list"></div>
+  </div>
+
+  <div id="detail-section">
+    <p class="section-label">Détail</p>
+    <div class="card detail-card" id="detail-card"></div>
+  </div>
+
+  <div class="webhook-hint">
+    Pour simuler la réception d'un email en temps réel via webhook, envoie une requête vers
+    <code>/webhook/email</code> pendant que cette page est ouverte — la liste se met à jour automatiquement.
+  </div>
+
+</div>
+
+<script>
+const API = "";
+let selectedId = null;
+let pollTimer = null;
+
+function scoreClass(score) {
+  if (score >= 70) return "danger";
+  if (score >= 40) return "warn";
+  return "safe";
+}
+
+function formatTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+async function fetchEmails() {
+  const res = await fetch(`${API}/emails`);
+  const emails = await res.json();
+  renderList(emails);
+}
+
+function renderList(emails) {
+  const container = document.getElementById("email-list");
+
+  if (emails.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <p>Aucun email analysé pour l'instant.</p>
+        <button class="btn btn-primary" onclick="seedDemo()">Charger des exemples de démonstration</button>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = emails.map(e => `
+    <div class="email-row ${e.id === selectedId ? 'selected' : ''}" onclick="selectEmail(${e.id})">
+      <div class="email-meta">
+        <div class="email-subject">${escapeHtml(e.subject)}</div>
+        <div class="email-sender">${escapeHtml(e.sender)}</div>
+      </div>
+      <div style="display:flex; align-items:center;">
+        ${e.blocked ? '<span class="blocked-tag">BLOQUÉ</span>' : ''}
+        <span class="score-pill ${scoreClass(e.risk_score)}">${e.risk_score}/100</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function selectEmail(id) {
+  selectedId = id;
+  const res = await fetch(`${API}/emails/${id}`);
+  if (!res.ok) return;
+  const email = await res.json();
+  renderDetail(email);
+  fetchEmails(); // pour surligner la ligne sélectionnée
+}
+
+function renderDetail(email) {
+  const card = document.getElementById("detail-card");
+  card.classList.add("visible");
+
+  const reasons = (email.triggered_signals || []).map(s => `
+    <li><span class="icon">⚠️</span><span>${escapeHtml(s.detail)}</span></li>
+  `).join("") || `<li><span class="icon">✅</span><span>Aucun signal de danger détecté.</span></li>`;
+
+  card.innerHTML = `
+    <div class="detail-score-row">
+      <span class="detail-badge ${scoreClass(email.risk_score)}">SCORE DE DANGER : ${email.risk_score}/100</span>
+      <span style="font-size:12px; color:var(--text-muted);">${email.source === 'webhook' ? 'Reçu via webhook' : 'Analyse manuelle'} · ${formatTime(email.received_at)}</span>
+    </div>
+    <div class="detail-body">
+      <p class="detail-subject">${escapeHtml(email.subject)}</p>
+      <p class="detail-sender">${escapeHtml(email.sender)}${email.sender_domain ? ' · domaine : ' + escapeHtml(email.sender_domain) : ''}</p>
+
+      <ul class="reason-list">${reasons}</ul>
+
+      <div class="explanation-label">Explication générée par le LLM</div>
+      <div class="explanation-box">${escapeHtml(email.explanation)}</div>
+
+      <button class="btn-block" id="btn-block" ${email.blocked ? "disabled" : ""}
+        onclick="blockEmail(${email.id})">
+        ${email.blocked ? "✔ Email bloqué et employé alerté" : "Bloquer l'email et alerter l'employé"}
+      </button>
+
+      <div style="margin-top: 14px;">
+        <button class="btn" style="width:100%;" id="btn-agent" onclick="runAgent(${email.id})">
+          🤖 Laisser l'agent décider seul
+        </button>
+      </div>
+
+      <div id="agent-result"></div>
+    </div>
+  `;
+
+  const existingTrace = email.agent_trace && email.agent_trace.length > 0;
+  if (existingTrace) {
+    renderAgentTrace(email.agent_trace, email.agent_status);
+  }
+}
+
+async function runAgent(id) {
+  const btn = document.getElementById("btn-agent");
+  btn.disabled = true;
+  btn.textContent = "L'agent réfléchit...";
+
+  const res = await fetch(`${API}/agent/analyze/${id}`, { method: "POST" });
+  btn.disabled = false;
+  btn.textContent = "🤖 Laisser l'agent décider seul";
+
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try { detail = (await res.json()).detail || detail; } catch (e) {}
+    document.getElementById("agent-result").innerHTML =
+      `<div class="explanation-box" style="margin-top:14px; color:var(--danger-text);">
+        Erreur agent — ${detail}. Vérifie le log du serveur (_launch_logs/phishhunter.log) pour le détail.
+      </div>`;
+    return;
+  }
+
+  const result = await res.json();
+  renderAgentTrace(result.trace, result.final_action);
+  fetchEmails();
+}
+
+const TOOL_LABELS = {
+  check_domain_age: "🔎 Vérification WHOIS du domaine",
+  block_email: "🚫 Blocage de l'email",
+  escalate_to_human: "🙋 Escalade vers un humain",
+  deliver_normally: "✅ Livraison normale",
+  llm_call_failed: "⚠️ Appel au LLM échoué",
+};
+
+// Affiche un objet {clé: valeur} en lignes lisibles ("clé : valeur") au lieu
+// du JSON brut avec accolades — tronque les textes très longs (ex. le
+// contenu WHOIS complet renvoyé par check_domain_age) pour rester lisible.
+function formatKV(obj, maxLen = 220) {
+  if (!obj || typeof obj !== "object") return escapeHtml(String(obj ?? ""));
+  const entries = Object.entries(obj);
+  if (!entries.length) return "";
+  return entries.map(([key, value]) => {
+    let text = typeof value === "string" ? value : JSON.stringify(value);
+    text = text.replace(/\s+/g, " ").trim();
+    if (text.length > maxLen) text = text.slice(0, maxLen) + "…";
+    return `<div><span style="color:var(--text-muted);">${escapeHtml(key)} :</span> ${escapeHtml(text)}</div>`;
+  }).join("");
+}
+
+function renderAgentTrace(trace, finalAction) {
+  const actionLabels = {
+    block_email: "🚫 Décision : bloquer l'email",
+    escalate_to_human: "🙋 Décision : escalader vers un humain",
+    deliver_normally: "✅ Décision : livrer normalement",
+  };
+
+  const steps = (trace || []).map(step => `
+    <div style="padding:8px 0; border-bottom:1px dashed var(--border); font-size:13px;">
+      <strong>${TOOL_LABELS[step.tool] || escapeHtml(step.tool)}</strong>
+      ${step.input && Object.keys(step.input).length ? `<div style="color:var(--text-muted); margin-top:4px;">${formatKV(step.input)}</div>` : ""}
+      <div style="color:var(--text-muted); margin-top:4px;">${formatKV(step.result)}</div>
+    </div>
+  `).join("");
+
+  document.getElementById("agent-result").innerHTML = `
+    <div class="explanation-label" style="margin-top:18px;">Raisonnement de l'agent</div>
+    <div class="explanation-box">
+      ${steps}
+      <div style="margin-top:10px; font-weight:700;">${actionLabels[finalAction] || finalAction}</div>
+    </div>
+  `;
+}
+
+async function blockEmail(id) {
+  await fetch(`${API}/emails/${id}/block`, { method: "POST" });
+  selectEmail(id);
+  fetchEmails();
+}
+
+async function seedDemo() {
+  const btn = document.getElementById("btn-seed");
+  btn.disabled = true;
+  btn.textContent = "Analyse en cours...";
+  await fetch(`${API}/seed-demo`, { method: "POST" });
+  btn.disabled = false;
+  btn.textContent = "Charger des exemples";
+  fetchEmails();
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
+
+document.getElementById("btn-refresh").addEventListener("click", fetchEmails);
+document.getElementById("btn-seed").addEventListener("click", seedDemo);
+
+// Chargement initial + rafraîchissement automatique (simule le "temps réel"
+// pour voir apparaître les emails reçus via /webhook/email sans recharger la page)
+fetchEmails();
+pollTimer = setInterval(fetchEmails, 4000);
+</script>
+
+</body>
+</html>
