@@ -265,4 +265,4 @@ Points de branchement déjà préparés dans le code, non connectés faute d'acc
 | Sentinel | Fonctionnel, ML réel entraîné et validé |
 | CrisisBot | Fonctionnel, sortie Slack réelle |
 | Intégrations bancaires réelles | Non connectées (hors périmètre du stage) |
-| Présentation de soutenance (.pptx) | Non générée (contenu prêt, blocage technique) |
+
