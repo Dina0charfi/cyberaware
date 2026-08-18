@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Serious Game — Dans la peau de l'attaquant | CyberAware</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #F1F2F6; --card: #FFFFFF; --border: #E5E7EB; --border-strong: #D1D5DB;
+    --text: #14181F; --text-dim: #5B6472; --text-faint: #9AA2AD;
+    --accent: #EA580C; --accent-bg: #EA580C1A;
+    --ok: #0F6E56; --ok-bg: #0F6E561A;
+    --fail: #DC2626; --fail-bg: #DC26261A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); margin: 0; padding: 48px 24px;
+  }
+  .shell { max-width: 900px; margin: 0 auto; }
+  .eyebrow {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; font-weight: 600;
+  }
+  h1 { font-weight: 600; font-size: 28px; margin: 0 0 6px; }
+  .sub { color: var(--text-dim); margin: 0 0 32px; font-size: 14.5px; line-height: 1.5; max-width: 640px; }
+  .campaign-bar {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 16px; font-size: 13px; color: var(--text-dim); margin-bottom: 24px;
+    display: flex; gap: 6px; align-items: center;
+  }
+  .campaign-bar b { color: var(--text); }
+  .vector-stats {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px;
+    margin-bottom: 24px;
+  }
+  .vector-stat-tile {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; font-size: 12.5px; color: var(--text-dim);
+  }
+  .vector-stat-tile .vst-label { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text); font-size: 13px; margin-bottom: 4px; }
+  .vector-stat-tile .vst-count { font-size: 12.5px; }
+  .vector-stat-tile .vst-count b { color: var(--fail); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px; cursor: pointer; text-align: left;
+    box-shadow: 0 1px 2px rgba(20,24,31,0.04); transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    font-family: inherit; width: 100%;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(20,24,31,0.08); border-color: var(--border-strong); }
+  .card h3 { margin: 0 0 4px; font-size: 15.5px; font-weight: 600; }
+  .card .dept { color: var(--text-faint); font-size: 12.5px; margin-bottom: 12px; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text-dim); margin-top: 4px; }
+  .risk-badge { font-weight: 700; }
+  .risk-low { color: var(--ok); } .risk-mid { color: #B45309; } .risk-high { color: var(--fail); }
+  .vector-card { display: flex; align-items: center; gap: 12px; }
+  .vector-card .icon { font-size: 22px; }
+  .vector-card .label { font-weight: 600; font-size: 14.5px; }
+  .back-link {
+    display: inline-block; margin-bottom: 16px; font-size: 13px; color: var(--text-dim);
+    text-decoration: none; cursor: pointer; border: none; background: none; padding: 0; font-family: inherit;
+  }
+  .back-link:hover { color: var(--text); }
+  .result-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 28px;
+  }
+  .result-badge {
+    display: inline-block; padding: 6px 14px; border-radius: 999px; font-weight: 700; font-size: 13.5px; margin-bottom: 16px;
+  }
+  .result-badge.fail { background: var(--fail-bg); color: var(--fail); }
+  .result-badge.success { background: var(--ok-bg); color: var(--ok); }
+  .result-badge.partial { background: #B4530920; color: #B45309; }
+  .history-line { font-size: 11.5px; color: var(--text-faint); margin-top: 6px; line-height: 1.4; }
+  .narrative { font-size: 15px; line-height: 1.6; margin-bottom: 20px; }
+  .defense-box {
+    background: var(--accent-bg); border: 1px solid #EA580C40; border-radius: 10px; padding: 16px; font-size: 13.5px; line-height: 1.55;
+  }
+  .defense-box b { color: var(--accent); }
+  .fake-message { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 10px; }
+  .fake-message-header { background: #F8F9FB; padding: 12px 16px; font-size: 12.5px; color: var(--text-dim); border-bottom: 1px solid var(--border); line-height: 1.6; }
+  .fake-message-body { padding: 16px; font-size: 14px; line-height: 1.65; }
+  .fake-message-body a { color: var(--accent); font-weight: 600; }
+  .pending-hint { margin-top: 16px; font-size: 12.5px; color: var(--text-dim); display: flex; align-items: center; gap: 8px; }
+  .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+  .actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+  button.primary {
+    background: var(--accent); color: white; border: none; border-radius: 10px; padding: 10px 18px;
+    font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  button.secondary {
+    background: var(--card); color: var(--text); border: 1px solid var(--border-strong); border-radius: 10px;
+    padding: 10px 18px; font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  #loading { color: var(--text-faint); font-size: 13.5px; padding: 40px 0; text-align: center; }
+</style>
+
+<style>
+.cwsb-shell{display:flex;min-height:100vh;}
+.cwsb-sidebar{width:260px;flex-shrink:0;background:#14181F;color:#C7CCD6;display:flex;flex-direction:column;height:100vh;position:sticky;top:0;border-right:1px solid #262b35;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;box-sizing:border-box;}
+.cwsb-sidebar *{box-sizing:border-box;}
+.cwsb-scroll{flex:1;overflow-y:auto;padding-bottom:12px;}
+.cwsb-brand{display:flex;align-items:center;gap:10px;padding:20px 18px 16px;border-bottom:1px solid #262b35;}
+.cwsb-logo{width:34px;height:34px;border-radius:9px;background:#2563EB;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;font-family:ui-monospace,Menlo,monospace;}
+.cwsb-name{font-weight:700;font-size:14.5px;color:#fff;line-height:1.2;}
+.cwsb-by{font-size:10.5px;color:#7A8296;}
+.cwsb-client{padding:14px 18px;border-bottom:1px solid #262b35;}
+.cwsb-client .cwsb-eyebrow{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#7A8296;margin:0 0 8px;}
+.cwsb-chip{display:flex;align-items:center;gap:8px;}
+.cwsb-avatar{width:26px;height:26px;border-radius:7px;background:#0F6E56;color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.cwsb-chip span{font-size:13.5px;font-weight:600;color:#fff;}
+.cwsb-nav{padding:16px 10px 6px;}
+.cwsb-nav .cwsb-eyebrow{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#7A8296;padding:0 10px;margin:0 0 6px;font-weight:600;}
+.cwsb-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:#C7CCD6;text-decoration:none;margin-bottom:2px;cursor:pointer;}
+.cwsb-item:hover{background:#1a1f29;color:#fff;}
+.cwsb-item.active{background:#1E2530;color:#fff;font-weight:600;}
+.cwsb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cwsb-footer{border-top:1px solid #262b35;padding:14px 16px;margin-top:auto;}
+.cwsb-incident{width:100%;background:#3a1414;border:1px solid #5c1f1f;color:#ff8a8a;border-radius:9px;padding:10px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;cursor:pointer;font-family:inherit;}
+.cwsb-main{flex:1;min-width:0;padding:48px 24px;}
+body{padding:0!important;}
+</style>
+<style>
+.cwsb-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:#C7CCD6;cursor:pointer;margin-bottom:2px;user-select:none;}
+.cwsb-toggle:hover{background:#1a1f29;color:#fff;}
+.cwsb-toggle .cwsb-toggle-label{display:flex;align-items:center;gap:10px;}
+.cwsb-chevron{transition:transform .15s ease;font-size:10px;color:#7A8296;}
+.cwsb-toggle.open .cwsb-chevron{transform:rotate(90deg);}
+.cwsb-submenu{max-height:0;overflow:hidden;transition:max-height .18s ease;margin-left:8px;border-left:1px solid #262b35;padding-left:8px;}
+.cwsb-submenu.open{max-height:400px;}
+.cwsb-subitem{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:13px;color:#C7CCD6;text-decoration:none;margin-bottom:1px;}
+.cwsb-subitem:hover{background:#1a1f29;color:#fff;}
+.cwsb-subitem.active{background:#1E2530;color:#fff;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="cwsb-shell">
+  <div class="cwsb-sidebar">
+    <div class="cwsb-scroll">
+      <div class="cwsb-brand">
+        <div class="cwsb-logo">CA</div>
+        <div>
+          <div class="cwsb-name">CYBERAWARE</div>
+          <div class="cwsb-by">by Hydatis</div>
+        </div>
+      </div>
+      <div class="cwsb-client">
+        <p class="cwsb-eyebrow">Espace client</p>
+        <div class="cwsb-chip"><div class="cwsb-avatar">BA</div><span>Banque ABC</span></div>
+      </div>
+      <div class="cwsb-nav">
+        <p class="cwsb-eyebrow">Pilotage</p>
+        <a class="cwsb-item" href="http://localhost:8000/" target="_blank">
+          <span class="cwsb-dot" style="background:#94A3B8;"></span> Accueil
+        </a>
+        <a class="cwsb-item" href="http://localhost:8000/#formation" target="_blank">
+          <span class="cwsb-dot" style="background:#60A5FA;"></span> Formation à la cybersécurité
+        </a>
+        <a class="cwsb-item active" id="cwsb-seriousgame-link" href="http://localhost:8880/" target="_blank"><span class="cwsb-dot" style="background:#EA580C;"></span> Serious Game</a>
+        <div class="cwsb-toggle" id="cwsb-agents-toggle">
+          <span class="cwsb-toggle-label"><span class="cwsb-dot" style="background:#94A3B8;"></span> Agents</span>
+          <span class="cwsb-chevron">▶</span>
+        </div>
+        <div class="cwsb-submenu" id="cwsb-agents-submenu">
+          <a class="cwsb-subitem" href="http://localhost:8877/" target="_blank"><span class="cwsb-dot" style="background:#7C5CFF;"></span> DarkWatch</a>
+          <a class="cwsb-subitem" href="http://localhost:8001/" target="_blank"><span class="cwsb-dot" style="background:#0F6E56;"></span> NetScope</a>
+          <a class="cwsb-subitem" href="http://localhost:8002/dashboard/" target="_blank"><span class="cwsb-dot" style="background:#4338CA;"></span> PhishHunter</a>
+          <a class="cwsb-subitem" href="http://localhost:8003/" target="_blank"><span class="cwsb-dot" style="background:#2563EB;"></span> Sentinel</a>
+          <a class="cwsb-subitem" href="http://localhost:8878/" target="_blank"><span class="cwsb-dot" style="background:#DC2626;"></span> CrisisBot</a>
+        </div>
+      </div>
+    </div>
+    <div class="cwsb-footer">
+      <button class="cwsb-incident">🚩 Signaler un incident</button>
+    </div>
+  </div>
+  <div class="cwsb-main">
+
+<div class="shell">
+  <p class="eyebrow">CyberAware — Serious Game</p>
+  <h1>Dans la peau de l'attaquant</h1>
+  <p class="sub">Vous incarnez un pentester mandaté pour tester Banque ABC. Choisissez une cible et un vecteur d'attaque — le résultat n'est plus un tirage au sort : il dépend d'un vrai clic sur le lien envoyé, ou d'un vrai choix explicite (signaler / ignorer).</p>
+
+  <div class="campaign-bar" id="campaignBar">Campagne en cours : <b>0</b> tentative(s) · <b>0</b> réussie(s) (<b>0%</b> de taux d'exploitation)</div>
+  <div class="vector-stats" id="vectorStats"></div>
+
+  <div id="app"><div id="loading">Chargement…</div></div>
+</div>
+
+<script>
+const API = "";
+let TARGETS = [];
+let VECTORS = {};
+let SMTP_CONFIGURED = false;
+let WHATSAPP_CONFIGURED = false;
+let state = { screen: "targets", targetId: null };
+let pollHandle = null;
+let realEmailValue = ""; // conservé entre les écrans pour ne pas le retaper à chaque tentative
+let realWhatsappValue = ""; // idem pour le numéro WhatsApp (envoi automatique réel)
+
+function riskClass(r) { return r < 35 ? "risk-low" : r < 60 ? "risk-mid" : "risk-high"; }
+
+async function loadData() {
+  const res = await fetch(`${API}/api/targets`);
+  const data = await res.json();
+  TARGETS = data.targets;
+  VECTORS = data.vectors;
+  SMTP_CONFIGURED = !!data.smtp_configured;
+  WHATSAPP_CONFIGURED = !!data.whatsapp_configured;
+  render();
+}
+
+async function updateCampaignBar() {
+  const res = await fetch(`${API}/api/campaign`);
+  const c = await res.json();
+  const rate = c.attempts ? Math.round(1000 * c.successes / c.attempts) / 10 : 0;
+  document.getElementById("campaignBar").innerHTML =
+    `Campagne en cours : <b>${c.attempts}</b> tentative(s) · <b>${c.successes}</b> réussie(s) (<b>${rate}%</b> de taux d'exploitation)`;
+
+  // Compteurs par vecteur, agrégés sur TOUTES les cibles — utile en mode
+  // "sensibilisation" pour lire d'un coup d'œil combien de personnes au
+  // total sont tombées dans le panneau QR code, combien ont rempli le faux
+  // formulaire de gain, etc. (voir get_global_vector_stats côté serveur).
+  const byVector = c.by_vector || {};
+  const vectorKeys = Object.keys(VECTORS).length ? Object.keys(VECTORS) : Object.keys(byVector);
+  const vectorStatsEl = document.getElementById("vectorStats");
+  if (vectorStatsEl) {
+    vectorStatsEl.innerHTML = vectorKeys.map(key => {
+      const v = VECTORS[key] || { icon: "❓", label: key };
+      const s = byVector[key] || { attempts: 0, clicked: 0, reported: 0, ignored: 0, opened: 0 };
+      const submitWord = key === "loterie" ? "formulaire rempli" : "clic(s)";
+      return `<div class="vector-stat-tile">
+        <div class="vst-label">${v.icon} ${v.label}</div>
+        <div class="vst-count"><b>${s.clicked}</b> ${submitWord} sur <b>${s.attempts}</b> tentative(s) · ${s.reported} signalée(s)</div>
+      </div>`;
+    }).join("");
+  }
+}
+
+function renderTargets() {
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  TARGETS.forEach(t => {
+    const card = document.createElement("button");
+    card.className = "card";
+    card.innerHTML = `
+      <h3>${t.name}</h3>
+      <div class="dept">${t.dept}</div>
+      <div class="stat-row"><span>Risque</span><span class="risk-badge ${riskClass(t.risk)}">${t.risk}/100</span></div>
+      <div class="stat-row"><span>Modules</span><span>${t.modules_done}/${t.modules_total}</span></div>
+    `;
+    card.onclick = () => { state = { screen: "vectors", targetId: t.id }; render(); };
+    grid.appendChild(card);
+  });
+  return grid;
+}
+
+function formatVectorStats(stats, vectorKey) {
+  const s = stats && stats[vectorKey];
+  if (!s || s.attempts === 0) return "Aucune tentative précédente avec ce vecteur.";
+  return `Historique ${VECTORS[vectorKey].label} : ${s.attempts} tentative(s) · ` +
+    `${s.reported} signalée(s) · ${s.clicked} clic(s) · ${s.ignored} ignorée(s) · ${s.opened} ouverte(s) sans suite`;
+}
+
+async function renderVectors() {
+  const target = TARGETS.find(t => t.id === state.targetId);
+  const wrap = document.createElement("div");
+
+  const back = document.createElement("button");
+  back.className = "back-link";
+  back.textContent = "← Changer de cible";
+  back.onclick = () => { state = { screen: "targets", targetId: null }; render(); };
+  wrap.appendChild(back);
+
+  const heading = document.createElement("p");
+  heading.className = "sub";
+  heading.style.marginBottom = "16px";
+  heading.innerHTML = `Choisissez votre vecteur d'attaque contre <b>${target.name}</b>`;
+  wrap.appendChild(heading);
+
+  let stats = {};
+  try {
+    const res = await fetch(`${API}/api/history/${target.id}`);
+    const data = await res.json();
+    stats = data.stats || {};
+  } catch (e) {
+    // Historique indisponible (ex. serveur pas encore prêt) : le jeu reste jouable sans.
+  }
+
+  const emailBox = document.createElement("div");
+  emailBox.style.cssText = "margin-bottom:18px;";
+  if (SMTP_CONFIGURED) {
+    emailBox.innerHTML = `
+      <label class="history-line" style="display:block;margin-bottom:6px;">
+        📧 Envoyer un VRAI email de simulation à (optionnel — laisser vide pour rester dans le navigateur) :
+      </label>
+      <input id="realEmailInput" type="email" placeholder="ton.email@exemple.com"
+        style="width:100%;max-width:340px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:8px;font-size:13.5px;font-family:inherit;">
+    `;
+  } else {
+    emailBox.innerHTML = `<p class="history-line">📧 Envoi d'un vrai email désactivé (SMTP non configuré dans .env) — la simulation reste affichée dans le navigateur.</p>`;
+  }
+  wrap.appendChild(emailBox);
+
+  const whatsappBox = document.createElement("div");
+  whatsappBox.style.cssText = "margin-bottom:18px;";
+  if (WHATSAPP_CONFIGURED) {
+    whatsappBox.innerHTML = `
+      <label class="history-line" style="display:block;margin-bottom:6px;">
+        🟢 Envoyer un VRAI message WhatsApp de simulation à (optionnel — laisser vide pour rester dans le navigateur) :
+      </label>
+      <input id="realWhatsappInput" type="tel" placeholder="+216XXXXXXXX"
+        style="width:100%;max-width:340px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:8px;font-size:13.5px;font-family:inherit;">
+    `;
+  } else {
+    whatsappBox.innerHTML = `<p class="history-line">🟢 Envoi d'un vrai message WhatsApp désactivé (GREEN API non configuré dans .env) — la simulation reste affichée dans le navigateur.</p>`;
+  }
+  wrap.appendChild(whatsappBox);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  Object.entries(VECTORS).forEach(([key, v]) => {
+    const card = document.createElement("button");
+    card.className = "card vector-card";
+    const s = stats[key];
+    const statLine = s
+      ? `<div class="history-line">${s.attempts} tentative(s) · ${s.reported} signalée(s) · ${s.clicked} clic(s)</div>`
+      : "";
+    card.innerHTML = `<span class="icon">${v.icon}</span><div><span class="label">${v.label}</span>${statLine}</div>`;
+    card.onclick = () => {
+      const emailInput = document.getElementById("realEmailInput");
+      realEmailValue = emailInput ? emailInput.value.trim() : "";
+      const whatsappInput = document.getElementById("realWhatsappInput");
+      realWhatsappValue = whatsappInput ? whatsappInput.value.trim() : "";
+      startAttack(target.id, key);
+    };
+    grid.appendChild(card);
+  });
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+async function startAttack(targetId, vectorKey) {
+  document.getElementById("app").innerHTML = '<div id="loading">Envoi de la simulation…</div>';
+  const res = await fetch(`${API}/api/attack`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      target_id: targetId, vector: vectorKey,
+      real_email: realEmailValue || undefined,
+      real_whatsapp: realWhatsappValue || undefined,
+    }),
+  });
+  const data = await res.json();
+  state = {
+    screen: "scenario", targetId,
+    token: data.token, target: data.target, vector: data.vector,
+    scenario: data.scenario, estimated_probability: data.estimated_probability,
+    email_status: data.email_status, whatsapp_status: data.whatsapp_status,
+  };
+  render();
+  startPolling(data.token);
+}
+
+function renderScenario() {
+  const { target, vector, scenario, token, estimated_probability, email_status, whatsapp_status } = state;
+  const wrap = document.createElement("div");
+
+  const back = document.createElement("button");
+  back.className = "back-link";
+  back.textContent = "← Changer de vecteur";
+  back.onclick = () => { stopPolling(); state = { screen: "vectors", targetId: target.id }; render(); };
+  wrap.appendChild(back);
+
+  let emailStatusLine = "";
+  if (email_status) {
+    const color = email_status.sent ? "var(--ok)" : "var(--fail)";
+    const icon = email_status.sent ? "✅" : "⚠️";
+    emailStatusLine = `<p class="history-line" style="color:${color};margin-top:8px;">${icon} ${email_status.message}</p>`;
+  }
+
+  let whatsappStatusLine = "";
+  if (whatsapp_status) {
+    const color = whatsapp_status.sent ? "var(--ok)" : "var(--fail)";
+    const icon = whatsapp_status.sent ? "✅" : "⚠️";
+    whatsappStatusLine = `<p class="history-line" style="color:${color};margin-top:8px;">${icon} ${whatsapp_status.message}</p>`;
+  }
+
+  const isQrVector = vector.key === "qrcode";
+  const qrBlock = isQrVector ? `
+    <div style="text-align:center;padding:20px 16px;border-top:1px solid var(--border);">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(scenario.track_url)}"
+        alt="QR code de la simulation" width="220" height="220" style="border-radius:10px;">
+      <p class="history-line" style="margin-top:10px;">
+        📱 Scanne ce QR code avec l'appareil photo de ton téléphone pour tester "clicked" en vrai
+        (téléphone sur le même réseau Wi-Fi que ce PC — voir README.md si ça ne charge pas).
+      </p>
+    </div>` : "";
+
+  const card = document.createElement("div");
+  card.className = "result-card";
+  card.innerHTML = `
+    <p class="eyebrow" style="margin-bottom:12px;">${scenario.vector_icon} ${scenario.vector_label} — envoyé à ${target.name}</p>
+    <div class="fake-message">
+      <div class="fake-message-header"><b>De :</b> ${scenario.sender}<br><b>Objet :</b> ${scenario.subject}</div>
+      <div class="fake-message-body">${scenario.body}</div>
+      ${qrBlock}
+    </div>
+    ${emailStatusLine}
+    ${whatsappStatusLine}
+    <p class="history-line" style="margin-top:14px;">Probabilité estimée avant simulation (indicative, ne détermine plus le résultat) : ${estimated_probability}%</p>
+    <p class="pending-hint"><span class="pulse-dot"></span>${
+      vector.key === "loterie"
+        ? "En attente d'une vraie réaction : ouvrir le lien affiche un vrai faux formulaire, mais seule sa VRAIE soumission (bouton \"Réclamer mon gain\" cliqué) déclenche \"clicked\" — ou choisis explicitement une des deux réactions ci-dessous."
+        : `En attente d'une vraie réaction : clique sur le vrai lien ${email_status && email_status.sent ? "(dans l'email reçu)" : whatsapp_status && whatsapp_status.sent ? "(dans le message WhatsApp reçu)" : "ci-dessus (nouvel onglet)"} pour tester "clicked", ou choisis explicitement une des deux réactions ci-dessous.`
+    }</p>
+  `;
+  wrap.appendChild(card);
+
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  const reportBtn = document.createElement("button");
+  reportBtn.className = "primary";
+  reportBtn.textContent = "🚩 Signaler cette tentative";
+  reportBtn.onclick = () => resolveAction(token, "reported");
+  const ignoreBtn = document.createElement("button");
+  ignoreBtn.className = "secondary";
+  ignoreBtn.textContent = "🙈 Ignorer sans agir";
+  ignoreBtn.onclick = () => resolveAction(token, "ignored");
+  actions.appendChild(reportBtn);
+  actions.appendChild(ignoreBtn);
+  wrap.appendChild(actions);
+
+  return wrap;
+}
+
+function startPolling(token) {
+  stopPolling();
+  pollHandle = setInterval(async () => {
+    try {
+      const res = await fetch(`${API}/api/attempt/${token}`);
+      const data = await res.json();
+      if (data.resolved) {
+        stopPolling();
+        goToResult(data);
+      }
+    } catch (e) {
+      // Serveur temporairement injoignable : on retente au prochain tick, pas d'action nécessaire.
+    }
+  }, 1500);
+}
+
+function stopPolling() {
+  if (pollHandle) { clearInterval(pollHandle); pollHandle = null; }
+}
+
+async function resolveAction(token, action) {
+  stopPolling();
+  document.getElementById("app").innerHTML = '<div id="loading">Enregistrement…</div>';
+  const res = await fetch(`${API}/api/resolve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, action }),
+  });
+  const result = await res.json();
+  goToResult(result);
+}
+
+function goToResult(result) {
+  // Le risque de la cible vient d'évoluer côté serveur selon l'action réelle
+  // observée : on met à jour la copie locale pour que l'écran de sélection de
+  // cible affiche la valeur à jour au prochain retour en arrière.
+  const t = TARGETS.find(t => t.id === result.target.id);
+  if (t) t.risk = result.risk_after;
+
+  state = { screen: "result", targetId: result.target.id, result };
+  render();
+  updateCampaignBar();
+}
+
+function renderResult() {
+  const { result } = state;
+  const wrap = document.createElement("div");
+
+  const back = document.createElement("button");
+  back.className = "back-link";
+  back.textContent = "← Recommencer";
+  back.onclick = () => { state = { screen: "targets", targetId: null }; render(); };
+  wrap.appendChild(back);
+
+  const card = document.createElement("div");
+  card.className = "result-card";
+  // action_verdict vient du serveur : "fail" (la cible a cliqué, attaque réussie
+  // côté attaquant), "success" (la cible a signalé, meilleure défense possible),
+  // ou "partial" (a ouvert ou ignoré sans se faire piéger, mais sans alerter non plus).
+  const badgeClass = result.action_verdict;
+  const badgeLabel = `${result.action_icon} ${result.action_label}`;
+
+  const riskArrow = result.risk_after > result.risk_before ? "↑" : result.risk_after < result.risk_before ? "↓" : "=";
+  const riskColor = result.risk_after > result.risk_before ? "var(--fail)" : result.risk_after < result.risk_before ? "var(--ok)" : "var(--text-dim)";
+
+  card.innerHTML = `
+    <span class="result-badge ${badgeClass}">${badgeLabel}</span>
+    <p class="narrative">${result.narrative}</p>
+    <p style="font-size: 12.5px; color: var(--text-dim); margin: -8px 0 10px;">
+      Risque de ${result.target.name} : ${result.risk_before}/100 →
+      <b style="color:${riskColor}">${result.risk_after}/100 ${riskArrow}</b>
+    </p>
+    <p class="history-line">${formatVectorStats(result.target_stats, result.vector.key)}</p>
+    <div class="defense-box" style="margin-top:16px;">
+      🎓 <b>Ce qu'il faut retenir côté défense</b><br><br>
+      ${result.defense_note}
+    </div>
+  `;
+  wrap.appendChild(card);
+
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  const retryBtn = document.createElement("button");
+  retryBtn.className = "primary";
+  retryBtn.textContent = "🎯 Essayer un autre vecteur";
+  retryBtn.onclick = () => { state = { screen: "vectors", targetId: state.targetId }; render(); };
+  const otherBtn = document.createElement("button");
+  otherBtn.className = "secondary";
+  otherBtn.textContent = "Attaquer une autre cible";
+  otherBtn.onclick = () => { state = { screen: "targets", targetId: null }; render(); };
+  actions.appendChild(retryBtn);
+  actions.appendChild(otherBtn);
+  wrap.appendChild(actions);
+
+  return wrap;
+}
+
+async function render() {
+  const app = document.getElementById("app");
+  if (state.screen === "targets") {
+    app.innerHTML = "";
+    app.appendChild(renderTargets());
+  } else if (state.screen === "vectors") {
+    app.innerHTML = '<div id="loading">Chargement…</div>';
+    const el = await renderVectors();
+    // Si l'utilisateur a changé d'écran pendant le fetch (double-clic rapide),
+    // on ne remplace pas un écran qui n'est plus le bon.
+    if (state.screen === "vectors") {
+      app.innerHTML = "";
+      app.appendChild(el);
+    }
+  } else if (state.screen === "scenario") {
+    app.innerHTML = "";
+    app.appendChild(renderScenario());
+  } else if (state.screen === "result") {
+    app.innerHTML = "";
+    app.appendChild(renderResult());
+  }
+}
+
+loadData().then(updateCampaignBar);
+</script>
+</div>
+</div>
+<script>
+(function(){
+  var toggle = document.getElementById('cwsb-agents-toggle');
+  var submenu = document.getElementById('cwsb-agents-submenu');
+  if (toggle && submenu) {
+    toggle.addEventListener('click', function(){
+      toggle.classList.toggle('open');
+      submenu.classList.toggle('open');
+    });
+  }
+})();
+</script>
+</body>
+</html>

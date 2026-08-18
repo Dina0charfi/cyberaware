@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Simulation Quishing — Affiche + Fiche debrief</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color: #1e293b;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 20mm;
+    page-break-after: always;
+    position: relative;
+  }
+
+  /* ---------- PAGE 1 : AFFICHE (prétexte) ---------- */
+  .poster {
+    background: linear-gradient(180deg, #0f2557, #143a7a);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 18px;
+  }
+  .poster .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.85;
+    margin-bottom: 10px;
+  }
+  .poster h1 {
+    font-size: 34px;
+    line-height: 1.25;
+    margin: 0;
+    max-width: 480px;
+  }
+  .poster .subtitle {
+    font-size: 16px;
+    opacity: 0.9;
+    max-width: 420px;
+    line-height: 1.6;
+  }
+  .poster .deadline {
+    background: #ef4444;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .qr-box {
+    background: white;
+    padding: 18px;
+    border-radius: 16px;
+    margin-top: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  .qr-box img { display: block; width: 220px; height: 220px; }
+  .poster .instructions {
+    font-size: 13px;
+    opacity: 0.8;
+    max-width: 380px;
+  }
+  .poster .footer {
+    position: absolute;
+    bottom: 16mm;
+    font-size: 11px;
+    opacity: 0.6;
+  }
+
+  /* ---------- PAGE 2 : FICHE DEBRIEF (usage interne formateur) ---------- */
+  .debrief h1 {
+    font-size: 22px;
+    border-bottom: 3px solid #dc2626;
+    padding-bottom: 10px;
+    margin-bottom: 6px;
+  }
+  .debrief .tag {
+    display: inline-block;
+    background: #fee2e2;
+    color: #dc2626;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .debrief h2 {
+    font-size: 15px;
+    margin: 22px 0 8px;
+    color: #0f2557;
+  }
+  .debrief p, .debrief li { font-size: 13.5px; line-height: 1.7; color: #334155; }
+  .debrief ul { margin: 0; padding-left: 20px; }
+  .debrief table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 13px;
+  }
+  .debrief th, .debrief td {
+    border: 1px solid #e2e8f0;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  .debrief th { background: #f1f5f9; }
+  .note {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 12.5px;
+    color: #78350f;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- ============ PAGE 1 — AFFICHE À IMPRIMER / COLLER ============ -->
+  <div class="page poster">
+    <div class="logo-row">🏢 Direction des Systèmes d'Information</div>
+    <h1>Renouvellement de votre badge d'accès requis</h1>
+    <p class="subtitle">
+      Suite à la mise à jour du système de contrôle d'accès, merci de scanner
+      ce QR code pour confirmer vos informations et éviter la désactivation
+      temporaire de votre badge.
+    </p>
+    <div class="deadline">Action requise avant vendredi 17h</div>
+
+    <div class="qr-box">
+      <!--
+        QR CODE GÉNÉRÉ EN DIRECT (aucun fichier binaire à héberger).
+        Remplace la valeur du paramètre "data" ci-dessous par l'URL RÉELLE
+        où quishing_landing_page.html sera hébergée avant impression/diffusion.
+        Actuellement : URL d'exemple à remplacer.
+      -->
+      <img src="https://quickchart.io/qr?text=https://vocal-madeleine-33741a.netlify.app/&margin=1&size=250" alt="QR code">
+    </div>
+
+    <p class="instructions">Scannez avec l'appareil photo de votre téléphone.</p>
+    <div class="footer">Ceci est un exercice interne de sensibilisation — programme Cyberaware</div>
+  </div>
+
+  <!-- ============ PAGE 2 — FICHE DEBRIEF (usage formateur, non affichée au public) ============ -->
+  <div class="page debrief">
+    <span class="tag">Usage interne — formateur</span>
+    <h1>Fiche de simulation — Quishing (QR code piégé)</h1>
+
+    <h2>Objectif de l'exercice</h2>
+    <p>
+      Mesurer la proportion d'employés qui scannent un QR code inconnu affiché
+      dans un lieu de passage (couloir, ascenseur, cafétéria, badgeuse) sans
+      vérifier sa légitimité, en miroir de la simulation déjà réalisée par email.
+    </p>
+
+    <h2>Prétexte utilisé</h2>
+    <p>
+      Fausse communication "IT / Sécurité des accès" exigeant un renouvellement
+      de badge sous délai court — combine autorité perçue (DSI) et urgence
+      artificielle, deux leviers classiques de l'ingénierie sociale.
+    </p>
+
+    <h2>Avant diffusion — check-list</h2>
+    <ul>
+      <li>Héberger <code>quishing_landing_page.html</code> sur une URL accessible (voir note ci-dessous).</li>
+      <li>Mettre à jour le paramètre <code>data=</code> du QR code (page précédente) avec cette URL réelle.</li>
+      <li>Valider avec la direction / le service juridique le périmètre de l'exercice (lieux, durée, population testée).</li>
+      <li>Prévenir l'équipe IT/support pour qu'elle ne traite pas les signalements comme une vraie menace pendant la période du test.</li>
+    </ul>
+
+    <h2>Indicateurs à collecter</h2>
+    <table>
+      <tr><th>Indicateur</th><th>Comment le mesurer</th></tr>
+      <tr><td>Taux de scan</td><td>Nombre de vues sur la landing page hébergée (logs du serveur / outil d'analytics)</td></tr>
+      <tr><td>Temps moyen avant scan</td><td>Horodatage des accès à la page vs. heure de pose de l'affiche</td></tr>
+      <tr><td>Signalements spontanés</td><td>Nombre d'employés ayant alerté l'IT avant de scanner</td></tr>
+    </table>
+
+    <h2>Script de debrief oral (à communiquer après l'exercice)</h2>
+    <ul>
+      <li>Annoncer qu'il s'agissait d'un test, sans blâme individuel.</li>
+      <li>Rappeler les signaux d'alerte affichés sur la page de sensibilisation.</li>
+      <li>Rattacher l'exercice à la simulation email déjà menée : même logique (autorité + urgence), vecteur différent.</li>
+      <li>Rappeler le canal de signalement officiel pour un QR code suspect.</li>
+    </ul>
+
+    <div class="note">
+      <b>Note hébergement :</b> pour que le QR code fonctionne, <code>quishing_landing_page.html</code>
+      doit être publié à une URL réelle avant impression de l'affiche (page 1).
+      Options rapides : GitHub Pages, Netlify (glisser-déposer), ou l'intranet
+      interne existant. Une fois l'URL connue, remplace le paramètre <code>data=</code>
+      dans le lien du QR code en page 1.
+    </div>
+  </div>
+
+</body>
+</html>

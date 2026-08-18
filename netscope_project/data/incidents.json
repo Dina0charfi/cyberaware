@@ -162,5 +162,124 @@
     "ml_score": 85.6,
     "isolated_at": "2026-08-14T10:10:26.609638+00:00",
     "source": "webhook"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-14T13:31:17.077932+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-14T13:37:34.884207+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-18T07:18:46.757709+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-18T07:20:54.360685+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-18T17:12:05.179500+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-18T17:16:48.137879+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-18T17:18:05.747781+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-18T17:25:40.976494+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-18T17:36:06.979315+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-18T17:47:17.275567+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-18T17:58:11.554961+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-18T18:08:22.831740+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-18T18:17:11.303691+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-18T18:33:29.677780+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-18T18:40:13.180265+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-18T18:57:09.913765+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-18T19:08:03.022653+00:00",
+    "source": "auto_scan"
   }
 ]

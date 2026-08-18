@@ -1,5 +1,5 @@
 {
-  "last_simulation_at": "2026-08-14T10:12:00.232899+00:00",
-  "last_incident": "Connexion anormale (webhook temps réel) — ahmed.trabelsi@banque.example, score 81/100",
-  "last_source": "sentinel"
+  "last_simulation_at": "2026-08-18T19:20:01.806273+00:00",
+  "last_incident": "Email de phishing à haut risque détecté — score 94/100 — expéditeur support@paypa1-secure-verify.com",
+  "last_source": "phishhunter"
 }

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetScope — Agent IA</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f6e56'/><text x='50' y='68' font-size='56' text-anchor='middle'>📡</text></svg>">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<style>
+  :root {
+    --bg-page: #f7f8fa;
+    --text-primary: #14181f;
+    --text-secondary: #5b6472;
+    --text-muted: #9aa2ad;
+    --border: #e4e7ec;
+    --card-dark: #0b0f14;
+    --card-dark-row-border: #1f2530;
+    --teal: #0f6e56;
+    --teal-bg: #e1f5ee;
+    --red: #a32d2d;
+    --red-text: #791f1f;
+    --red-bg: #fcebeb;
+    --red-border: #f09595;
+    --red-row-bg: #2a1414;
+    --white: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg-page);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    line-height: 1.5;
+  }
+  .page {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 32px 20px 64px;
+  }
+  .back-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--teal);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    margin-bottom: 20px;
+  }
+  .agent-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  .agent-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: var(--teal-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .agent-icon i { font-size: 24px; color: var(--teal); }
+  .agent-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--teal);
+    letter-spacing: 0.04em;
+    margin: 0 0 2px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .agent-desc {
+    color: var(--text-secondary);
+    margin: 0 0 24px;
+    font-size: 15px;
+  }
+  .traffic-card {
+    background: var(--card-dark);
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .webhook-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #9aa5b5;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+  .traffic-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 8px;
+    border-top: 0.5px solid var(--card-dark-row-border);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 13px;
+    color: #d3d8e0;
+    border-radius: 6px;
+    transition: background 0.3s ease, opacity 0.3s ease;
+  }
+  .traffic-row .vol { color: #7c8593; }
+  .traffic-row.suspicious {
+    color: var(--red-text);
+  }
+  .traffic-row.suspicious .domain { display: flex; align-items: center; gap: 6px; }
+  .traffic-row.suspicious.flagged {
+    background: var(--red-row-bg);
+  }
+  .traffic-row.suspicious.flagged .vol { color: #e8a3a3; font-weight: 500; }
+  .traffic-row.suspicious.flagged .domain { color: #e8a3a3; }
+
+  .analyze-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: var(--text-primary);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.2s;
+  }
+  .analyze-btn:hover { opacity: 0.9; }
+  .analyze-btn:disabled { opacity: 0.6; cursor: default; }
+
+  .result-card {
+    background: var(--white);
+    border: 0.5px solid var(--red-border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-top: 20px;
+    display: none;
+  }
+  .result-card.show { display: block; }
+  .badge {
+    display: inline-block;
+    background: var(--red-bg);
+    color: var(--red-text);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+  }
+  .result-card p { margin: 0 0 16px; font-size: 15px; }
+  .result-card code {
+    background: #f1f2f4;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .profile-card {
+    background: #f7f8fa;
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .profile-card .name { font-weight: 500; margin: 0; }
+  .profile-card .meta { font-size: 13px; color: var(--text-secondary); margin: 2px 0 0; }
+  .profile-card .link { font-size: 13px; color: #185fa5; white-space: nowrap; }
+  .isolate-btn {
+    width: 100%;
+    padding: 13px;
+    border-radius: 8px;
+    border: none;
+    background: var(--red);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .isolate-btn:hover { background: #8f2727; }
+  .isolate-btn:active { transform: scale(0.99); }
+
+  .score-block {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f7f8fa;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .score-label { font-size: 12px; color: var(--text-secondary); margin: 0 0 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .score-value { font-size: 28px; font-weight: 500; margin: 0; }
+  .level-badge {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+  }
+  .level-low { background: #eaf3de; color: #27500a; }
+  .level-medium { background: #faeeda; color: #633806; }
+  .level-high { background: #fcebeb; color: #791f1f; }
+  .level-critical { background: #501313; color: #f7c1c1; }
+
+  .factors-block { margin-bottom: 16px; }
+  .factors-title { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin: 0 0 8px; }
+  .factors-list { list-style: none; margin: 0; padding: 0; }
+  .factors-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    padding: 6px 0;
+  }
+  .factors-list .sign { font-weight: 600; width: 14px; flex-shrink: 0; }
+  .factors-list .sign.up { color: var(--red-text); }
+  .factors-list .sign.down { color: #27500a; }
+</style>
+
+<style>
+.cwsb-shell{display:flex;min-height:100vh;}
+.cwsb-sidebar{width:260px;flex-shrink:0;background:#14181F;color:#C7CCD6;display:flex;flex-direction:column;height:100vh;position:sticky;top:0;border-right:1px solid #262b35;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;box-sizing:border-box;}
+.cwsb-sidebar *{box-sizing:border-box;}
+.cwsb-scroll{flex:1;overflow-y:auto;padding-bottom:12px;}
+.cwsb-brand{display:flex;align-items:center;gap:10px;padding:20px 18px 16px;border-bottom:1px solid #262b35;}
+.cwsb-logo{width:34px;height:34px;border-radius:9px;background:#2563EB;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;font-family:ui-monospace,Menlo,monospace;}
+.cwsb-name{font-weight:700;font-size:14.5px;color:#fff;line-height:1.2;}
+.cwsb-by{font-size:10.5px;color:#7A8296;}
+.cwsb-client{padding:14px 18px;border-bottom:1px solid #262b35;}
+.cwsb-client .cwsb-eyebrow{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#7A8296;margin:0 0 8px;}
+.cwsb-chip{display:flex;align-items:center;gap:8px;}
+.cwsb-avatar{width:26px;height:26px;border-radius:7px;background:#0F6E56;color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.cwsb-chip span{font-size:13.5px;font-weight:600;color:#fff;}
+.cwsb-nav{padding:16px 10px 6px;}
+.cwsb-nav .cwsb-eyebrow{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#7A8296;padding:0 10px;margin:0 0 6px;font-weight:600;}
+.cwsb-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:#C7CCD6;text-decoration:none;margin-bottom:2px;cursor:pointer;}
+.cwsb-item:hover{background:#1a1f29;color:#fff;}
+.cwsb-item.active{background:#1E2530;color:#fff;font-weight:600;}
+.cwsb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cwsb-footer{border-top:1px solid #262b35;padding:14px 16px;margin-top:auto;}
+.cwsb-incident{width:100%;background:#3a1414;border:1px solid #5c1f1f;color:#ff8a8a;border-radius:9px;padding:10px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;cursor:pointer;font-family:inherit;}
+.cwsb-main{flex:1;min-width:0;}
+</style>
+<style>
+.cwsb-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:#C7CCD6;cursor:pointer;margin-bottom:2px;user-select:none;}
+.cwsb-toggle:hover{background:#1a1f29;color:#fff;}
+.cwsb-toggle .cwsb-toggle-label{display:flex;align-items:center;gap:10px;}
+.cwsb-chevron{transition:transform .15s ease;font-size:10px;color:#7A8296;}
+.cwsb-toggle.open .cwsb-chevron{transform:rotate(90deg);}
+.cwsb-submenu{max-height:0;overflow:hidden;transition:max-height .18s ease;margin-left:8px;border-left:1px solid #262b35;padding-left:8px;}
+.cwsb-submenu.open{max-height:400px;}
+.cwsb-subitem{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:13px;color:#C7CCD6;text-decoration:none;margin-bottom:1px;}
+.cwsb-subitem:hover{background:#1a1f29;color:#fff;}
+.cwsb-subitem.active{background:#1E2530;color:#fff;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="cwsb-shell">
+  <div class="cwsb-sidebar">
+    <div class="cwsb-scroll">
+      <div class="cwsb-brand">
+        <div class="cwsb-logo">CA</div>
+        <div>
+          <div class="cwsb-name">CYBERAWARE</div>
+          <div class="cwsb-by">by Hydatis</div>
+        </div>
+      </div>
+      <div class="cwsb-client">
+        <p class="cwsb-eyebrow">Espace client</p>
+        <div class="cwsb-chip"><div class="cwsb-avatar">BA</div><span>Banque ABC</span></div>
+      </div>
+      <div class="cwsb-nav">
+        <p class="cwsb-eyebrow">Pilotage</p>
+        <a class="cwsb-item" href="http://localhost:8000/" target="_blank">
+          <span class="cwsb-dot" style="background:#94A3B8;"></span> Accueil
+        </a>
+        <a class="cwsb-item" href="http://localhost:8000/#formation" target="_blank">
+          <span class="cwsb-dot" style="background:#60A5FA;"></span> Formation à la cybersécurité
+        </a>
+        <a class="cwsb-item" id="cwsb-seriousgame-link" href="http://localhost:8880/" target="_blank"><span class="cwsb-dot" style="background:#EA580C;"></span> Serious Game</a>
+        <div class="cwsb-toggle" id="cwsb-agents-toggle">
+          <span class="cwsb-toggle-label"><span class="cwsb-dot" style="background:#94A3B8;"></span> Agents</span>
+          <span class="cwsb-chevron">▶</span>
+        </div>
+        <div class="cwsb-submenu" id="cwsb-agents-submenu">
+          <a class="cwsb-subitem" href="http://localhost:8877/" target="_blank"><span class="cwsb-dot" style="background:#7C5CFF;"></span> DarkWatch</a>
+          <a class="cwsb-subitem" href="http://localhost:8002/dashboard/" target="_blank"><span class="cwsb-dot" style="background:#4338CA;"></span> PhishHunter</a>
+          <a class="cwsb-subitem" href="http://localhost:8003/" target="_blank"><span class="cwsb-dot" style="background:#2563EB;"></span> Sentinel</a>
+          <a class="cwsb-subitem" href="http://localhost:8878/" target="_blank"><span class="cwsb-dot" style="background:#DC2626;"></span> CrisisBot</a>
+        </div>
+      </div>
+    </div>
+    <div class="cwsb-footer">
+      <button class="cwsb-incident">🚩 Signaler un incident</button>
+    </div>
+  </div>
+  <div class="cwsb-main">
+
+<div class="page">
+
+  <a href="http://localhost:8000/" class="back-link"><i class="ti ti-arrow-left"></i>Retour aux agents IA</a>
+
+  <div class="agent-header">
+    <div class="agent-icon"><i class="ti ti-radar-2"></i></div>
+    <div>
+      <p class="agent-label">AGENT IA</p>
+      <h1>NetScope</h1>
+    </div>
+  </div>
+
+  <p class="agent-desc">Analyse le trafic réseau sortant. Détecte les domaines DNS suspects et corrèle l'alerte avec le score de risque humain du poste concerné.</p>
+
+  <div class="traffic-card">
+    <div class="webhook-tag"><i class="ti ti-plug"></i>Webhook → Firewall / Proxy (Fortinet, PaloAlto)</div>
+
+    <div id="traffic-rows"></div>
+
+    <button class="analyze-btn" id="analyze-btn">
+      <i class="ti ti-search"></i><span id="analyze-btn-label">Chargement du trafic…</span>
+    </button>
+    <p id="api-error" style="display:none; color: var(--red-text); font-size: 13px; margin: 10px 0 0;"></p>
+  </div>
+
+  <div class="result-card" id="result-card">
+    <span class="badge">Domaine suspect</span>
+    <p id="result-text"></p>
+
+    <div class="score-block">
+      <div>
+        <p class="score-label">NetScope risk score</p>
+        <p class="score-value" id="score-value">—</p>
+      </div>
+      <span class="level-badge" id="level-badge"></span>
+    </div>
+
+    <div class="factors-block">
+      <p class="factors-title">Facteurs principaux</p>
+      <ul class="factors-list" id="factors-list"></ul>
+    </div>
+
+    <div class="profile-card" id="profile-card"></div>
+
+    <p style="color: var(--text-secondary); font-size: 14px;" id="correlation-text"></p>
+
+    <button class="isolate-btn" id="isolate-btn"><i class="ti ti-lock"></i><span id="isolate-btn-label">Isoler le poste et lancer une investigation</span></button>
+    <p id="isolate-confirm" style="display:none; color: var(--text-secondary); font-size: 13px; margin: 10px 0 0; text-align:center;"></p>
+  </div>
+
+</div>
+
+<script>
+// Page servie par FastAPI lui-même (http://localhost:8000/) donc on
+// appelle l'API en relatif, pas besoin de préciser l'hôte.
+const API_BASE = '';
+let currentSuspect = null;
+
+function renderRows(results) {
+  const container = document.getElementById('traffic-rows');
+  container.innerHTML = '';
+  results.forEach(r => {
+    const isSuspicious = r.verdict === 'suspect';
+    const row = document.createElement('div');
+    row.className = 'traffic-row' + (isSuspicious ? ' suspicious flagged' : '');
+    row.innerHTML = `
+      <span class="domain">${isSuspicious ? '<i class="ti ti-alert-triangle"></i>' : ''}${r.domain}</span>
+      <span class="vol">${r.ml_score}%</span>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function renderProfile(user) {
+  document.getElementById('profile-card').innerHTML = `
+    <div>
+      <p class="name">${user.name}</p>
+      <p class="meta">${user.department} · Score de risque humain ${user.human_risk_score}/100</p>
+    </div>
+  `;
+}
+
+function levelClass(level) {
+  return { 'Faible': 'level-low', 'Moyen': 'level-medium', 'Élevé': 'level-high', 'Critique': 'level-critical' }[level] || 'level-medium';
+}
+
+function renderScore(suspect) {
+  document.getElementById('score-value').textContent = `${Math.round(suspect.ml_score)}/100`;
+  const badge = document.getElementById('level-badge');
+  badge.textContent = suspect.risk_level;
+  badge.className = 'level-badge ' + levelClass(suspect.risk_level);
+}
+
+function renderFactors(factors) {
+  const list = document.getElementById('factors-list');
+  list.innerHTML = '';
+  if (!factors || factors.length === 0) {
+    list.innerHTML = '<li style="color: var(--text-secondary);">Explication indisponible pour ce modèle.</li>';
+    return;
+  }
+  factors.forEach(f => {
+    const li = document.createElement('li');
+    const up = f.direction === 'increase';
+    li.innerHTML = `<span class="sign ${up ? 'up' : 'down'}">${up ? '+' : '−'}</span>${f.label}`;
+    list.appendChild(li);
+  });
+}
+
+function correlationText(priority, score) {
+  if (priority === 'élevée') {
+    return `NetScope corrèle ce trafic avec un score de risque humain élevé (${score}/100) pour ce poste — la priorité d'investigation est renforcée en conséquence.`;
+  } else if (priority === 'moyenne') {
+    return `Le score de risque humain de ce poste est moyen (${score}/100) — une vérification standard est recommandée.`;
+  }
+  return `Le score de risque humain de ce poste est faible (${score}/100) — l'alerte réseau reste à investiguer indépendamment du facteur humain.`;
+}
+
+async function loadTraffic() {
+  const btn = document.getElementById('analyze-btn');
+  const label = document.getElementById('analyze-btn-label');
+  const errorEl = document.getElementById('api-error');
+  const result = document.getElementById('result-card');
+  const resultText = document.getElementById('result-text');
+  const isolateBtn = document.getElementById('isolate-btn');
+  const isolateLabel = document.getElementById('isolate-btn-label');
+  const isolateConfirm = document.getElementById('isolate-confirm');
+
+  btn.disabled = true;
+  label.textContent = 'Analyse en cours…';
+  errorEl.style.display = 'none';
+
+  try {
+    const res = await fetch(`${API_BASE}/sample-traffic?n=4`);
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody.detail || `Erreur API (${res.status})`);
+    }
+    const data = await res.json();
+
+    renderRows(data.results);
+
+    const topSuspect = data.results.find(r => r.verdict === 'suspect');
+    currentSuspect = topSuspect || null;
+
+    isolateBtn.disabled = false;
+    isolateLabel.textContent = 'Isoler le poste et lancer une investigation';
+    isolateConfirm.style.display = 'none';
+
+    if (topSuspect) {
+      resultText.innerHTML = `Le domaine <code>${topSuspect.domain}</code> a été analysé par le modèle NetScope (netscope_model.pkl) sur un échantillon réel du dataset.`;
+      renderScore(topSuspect);
+      renderFactors(topSuspect.factors);
+      renderProfile(topSuspect.user);
+      document.getElementById('correlation-text').textContent = correlationText(topSuspect.user.priority, topSuspect.user.human_risk_score);
+      result.classList.add('show');
+      result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      result.classList.remove('show');
+    }
+
+    label.textContent = 'Charger un nouvel échantillon';
+  } catch (err) {
+    errorEl.textContent = `Impossible de charger le trafic (${err.message}).`;
+    errorEl.style.display = 'block';
+    label.textContent = 'Réessayer';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function isolateHost() {
+  if (!currentSuspect) return;
+  const isolateBtn = document.getElementById('isolate-btn');
+  const isolateLabel = document.getElementById('isolate-btn-label');
+  const isolateConfirm = document.getElementById('isolate-confirm');
+
+  isolateBtn.disabled = true;
+  isolateLabel.textContent = 'Isolement en cours…';
+
+  try {
+    const res = await fetch(`${API_BASE}/isolate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        domain: currentSuspect.domain,
+        user: currentSuspect.user.name,
+        ml_score: currentSuspect.ml_score,
+      }),
+    });
+    if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+    const data = await res.json();
+
+    isolateLabel.textContent = 'Poste isolé';
+    const time = new Date(data.isolated_at).toLocaleTimeString('fr-FR');
+    isolateConfirm.textContent = `Incident enregistré à ${time} — journalisé dans data/incidents.json.`;
+    isolateConfirm.style.display = 'block';
+  } catch (err) {
+    isolateLabel.textContent = 'Isoler le poste et lancer une investigation';
+    isolateConfirm.textContent = `Échec de l'isolement (${err.message}).`;
+    isolateConfirm.style.display = 'block';
+    isolateBtn.disabled = false;
+  }
+}
+
+document.getElementById('analyze-btn').addEventListener('click', loadTraffic);
+document.getElementById('isolate-btn').addEventListener('click', isolateHost);
+loadTraffic();
+</script>
+</div>
+</div>
+<script>
+(function(){
+  var toggle = document.getElementById('cwsb-agents-toggle');
+  var submenu = document.getElementById('cwsb-agents-submenu');
+  if (toggle && submenu) {
+    toggle.addEventListener('click', function(){
+      toggle.classList.toggle('open');
+      submenu.classList.toggle('open');
+    });
+  }
+})();
+</script>
+</body>
+</html>

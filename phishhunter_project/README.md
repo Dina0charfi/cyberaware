@@ -25,8 +25,8 @@ models/
 └── phishhunter_known_brands.json
 ```
 
-⚠️ Le dossier `models/` est vide dans ce projet — ces fichiers doivent être générés
-depuis ton notebook Kaggle (cellule de sauvegarde finale) puis téléchargés manuellement.
+Note : le dossier `models/` est vide dans ce dépôt — ces fichiers se génèrent
+depuis le notebook Kaggle (cellule de sauvegarde finale) puis se téléchargent manuellement.
 
 ## 3. Configurer le token du LLM (Hugging Face — gratuit)
 
@@ -38,9 +38,9 @@ cp .env.example .env
 # puis édite .env et renseigne ton vrai HF_TOKEN
 ```
 
-⚠️ Le niveau gratuit de l'Inference API peut renvoyer une erreur de "cold start"
+Note : le niveau gratuit de l'Inference API peut renvoyer une erreur de "cold start"
 (modèle en cours de chargement côté Hugging Face) lors du tout premier appel —
-réessaie après quelques secondes. Le code inclut un fallback qui affiche les
+il suffit de réessayer après quelques secondes. Le code inclut un fallback qui affiche les
 signaux bruts si l'appel échoue, pour que l'API reste fonctionnelle même sans LLM.
 
 ## 4. Lancer le serveur
@@ -79,7 +79,7 @@ phishhunter/
 │   ├── scoring/
 │   │   └── engine.py    ← chargement du modèle + calcul du score 0-100
 │   ├── llm/
-│   │   └── explain.py   ← génération de l'explication via Claude
+│   │   └── explain.py   ← génération de l'explication via Hugging Face Inference API
 │   └── api/
 │       └── main.py      ← routes FastAPI (/analyze, /webhook/email)
 ├── requirements.txt

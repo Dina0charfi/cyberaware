@@ -284,8 +284,86 @@
     font-size: 12px;
   }
 </style>
+
+<style>
+.cwsb-shell{display:flex;min-height:100vh;}
+.cwsb-sidebar{width:260px;flex-shrink:0;background:#14181F;color:#C7CCD6;display:flex;flex-direction:column;height:100vh;position:sticky;top:0;border-right:1px solid #262b35;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;box-sizing:border-box;}
+.cwsb-sidebar *{box-sizing:border-box;}
+.cwsb-scroll{flex:1;overflow-y:auto;padding-bottom:12px;}
+.cwsb-brand{display:flex;align-items:center;gap:10px;padding:20px 18px 16px;border-bottom:1px solid #262b35;}
+.cwsb-logo{width:34px;height:34px;border-radius:9px;background:#2563EB;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;font-family:ui-monospace,Menlo,monospace;}
+.cwsb-name{font-weight:700;font-size:14.5px;color:#fff;line-height:1.2;}
+.cwsb-by{font-size:10.5px;color:#7A8296;}
+.cwsb-client{padding:14px 18px;border-bottom:1px solid #262b35;}
+.cwsb-client .cwsb-eyebrow{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#7A8296;margin:0 0 8px;}
+.cwsb-chip{display:flex;align-items:center;gap:8px;}
+.cwsb-avatar{width:26px;height:26px;border-radius:7px;background:#0F6E56;color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.cwsb-chip span{font-size:13.5px;font-weight:600;color:#fff;}
+.cwsb-nav{padding:16px 10px 6px;}
+.cwsb-nav .cwsb-eyebrow{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#7A8296;padding:0 10px;margin:0 0 6px;font-weight:600;}
+.cwsb-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:#C7CCD6;text-decoration:none;margin-bottom:2px;cursor:pointer;}
+.cwsb-item:hover{background:#1a1f29;color:#fff;}
+.cwsb-item.active{background:#1E2530;color:#fff;font-weight:600;}
+.cwsb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cwsb-footer{border-top:1px solid #262b35;padding:14px 16px;margin-top:auto;}
+.cwsb-incident{width:100%;background:#3a1414;border:1px solid #5c1f1f;color:#ff8a8a;border-radius:9px;padding:10px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;cursor:pointer;font-family:inherit;}
+.cwsb-main{flex:1;min-width:0;}
+</style>
+<style>
+.cwsb-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:#C7CCD6;cursor:pointer;margin-bottom:2px;user-select:none;}
+.cwsb-toggle:hover{background:#1a1f29;color:#fff;}
+.cwsb-toggle .cwsb-toggle-label{display:flex;align-items:center;gap:10px;}
+.cwsb-chevron{transition:transform .15s ease;font-size:10px;color:#7A8296;}
+.cwsb-toggle.open .cwsb-chevron{transform:rotate(90deg);}
+.cwsb-submenu{max-height:0;overflow:hidden;transition:max-height .18s ease;margin-left:8px;border-left:1px solid #262b35;padding-left:8px;}
+.cwsb-submenu.open{max-height:400px;}
+.cwsb-subitem{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:13px;color:#C7CCD6;text-decoration:none;margin-bottom:1px;}
+.cwsb-subitem:hover{background:#1a1f29;color:#fff;}
+.cwsb-subitem.active{background:#1E2530;color:#fff;font-weight:600;}
+</style>
 </head>
 <body>
+<div class="cwsb-shell">
+  <div class="cwsb-sidebar">
+    <div class="cwsb-scroll">
+      <div class="cwsb-brand">
+        <div class="cwsb-logo">CA</div>
+        <div>
+          <div class="cwsb-name">CYBERAWARE</div>
+          <div class="cwsb-by">by Hydatis</div>
+        </div>
+      </div>
+      <div class="cwsb-client">
+        <p class="cwsb-eyebrow">Espace client</p>
+        <div class="cwsb-chip"><div class="cwsb-avatar">BA</div><span>Banque ABC</span></div>
+      </div>
+      <div class="cwsb-nav">
+        <p class="cwsb-eyebrow">Pilotage</p>
+        <a class="cwsb-item" href="http://localhost:8000/" target="_blank">
+          <span class="cwsb-dot" style="background:#94A3B8;"></span> Accueil
+        </a>
+        <a class="cwsb-item" href="http://localhost:8000/#formation" target="_blank">
+          <span class="cwsb-dot" style="background:#60A5FA;"></span> Formation à la cybersécurité
+        </a>
+        <a class="cwsb-item" id="cwsb-seriousgame-link" href="http://localhost:8880/" target="_blank"><span class="cwsb-dot" style="background:#EA580C;"></span> Serious Game</a>
+        <div class="cwsb-toggle" id="cwsb-agents-toggle">
+          <span class="cwsb-toggle-label"><span class="cwsb-dot" style="background:#94A3B8;"></span> Agents</span>
+          <span class="cwsb-chevron">▶</span>
+        </div>
+        <div class="cwsb-submenu" id="cwsb-agents-submenu">
+          <a class="cwsb-subitem" href="http://localhost:8877/" target="_blank"><span class="cwsb-dot" style="background:#7C5CFF;"></span> DarkWatch</a>
+          <a class="cwsb-subitem" href="http://localhost:8001/" target="_blank"><span class="cwsb-dot" style="background:#0F6E56;"></span> NetScope</a>
+          <a class="cwsb-subitem" href="http://localhost:8003/" target="_blank"><span class="cwsb-dot" style="background:#2563EB;"></span> Sentinel</a>
+          <a class="cwsb-subitem" href="http://localhost:8878/" target="_blank"><span class="cwsb-dot" style="background:#DC2626;"></span> CrisisBot</a>
+        </div>
+      </div>
+    </div>
+    <div class="cwsb-footer">
+      <button class="cwsb-incident">🚩 Signaler un incident</button>
+    </div>
+  </div>
+  <div class="cwsb-main">
+
 
 <div class="page">
 
@@ -524,5 +602,19 @@ fetchEmails();
 pollTimer = setInterval(fetchEmails, 4000);
 </script>
 
+</div>
+</div>
+<script>
+(function(){
+  var toggle = document.getElementById('cwsb-agents-toggle');
+  var submenu = document.getElementById('cwsb-agents-submenu');
+  if (toggle && submenu) {
+    toggle.addEventListener('click', function(){
+      toggle.classList.toggle('open');
+      submenu.classList.toggle('open');
+    });
+  }
+})();
+</script>
 </body>
 </html>

@@ -1,0 +1,569 @@
+\section{NetScope --- DNS Anomaly Detection}
+
+\subsection*{Introduction}
+NetScope addresses a specific cybersecurity problem: telling an ordinary DNS
+lookup apart from one that statistically resembles data exfiltration or
+command-and-control traffic. DNS tunneling encodes data --- credentials,
+files, stolen records --- into the domain name of a DNS query, then sends
+it to a server the attacker controls; because DNS traffic is high-volume
+and rarely inspected in depth, this is hard to catch by hand, and hard to
+catch with a static blocklist since the domain name itself may never have
+been seen before. Unlike DarkWatch and CrisisBot, which need no trained
+model at all, NetScope is a genuinely trained supervised classifier ---
+one of several agents in \ProjectName{} built around a model learned from
+labeled data rather than deterministic rules or an external lookup. What
+makes it architecturally interesting is that it is really two things
+joined together: an \textbf{offline training process} (a notebook, run on
+Kaggle against a public labeled dataset, whose only job is to produce a
+model file) and an \textbf{always-on production service}
+(\texttt{netscope\_project/}, in this repository) that loads that model and
+applies it continuously to live-looking traffic. Every technical claim
+about the production code in this section was verified directly against
+\texttt{src/netscope\_agent/}; claims that only the notebook can settle are
+flagged explicitly where the notebook itself is not present in this
+repository to re-check.
+
+\subsection*{Role in the \ProjectName{} Architecture}
+NetScope is an independent web service (FastAPI, its own port) launched
+alongside the other four agents. Like NetScope's siblings, it does not
+communicate directly with any other detection agent; its only outbound link
+is to CrisisBot, triggered automatically once a score clears a fixed bar.
+Three separate entry points can feed a DNS query into the same pipeline,
+which mirrors the pattern already seen with DarkWatch's own three entry
+points:
+
+\begin{itemize}[nosep]
+\item \textbf{\texttt{POST /analyze}} --- on-demand scoring, features already supplied by the caller (used by the dashboard).
+\item \textbf{\texttt{POST /webhook/traffic-event}} --- a push endpoint for an external firewall or proxy, protected by a shared secret checked with \texttt{hmac.compare\_digest}. If the caller only supplies a domain name, the 16 features are computed live instead of being rejected.
+\item \textbf{\texttt{auto\_scan.py}} --- a pull-based autonomous loop that samples a domain roughly every 25 seconds and can act on its own once a score crosses a threshold, the same principle as DarkWatch's \texttt{agent.py}.
+\end{itemize}
+
+Whichever entry point fires, the query passes through the same four stages
+--- perception, feature extraction, scoring, decision --- before reaching
+one of two outcomes, shown in Figure~\ref{fig:netscope-pipeline}.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, align=center, minimum width=4.6cm, minimum height=1.05cm, font=\small, fill=white},
+  accent/.style={box, draw=blue!40!black, line width=1pt},
+  arr/.style={-{Latex[length=2mm]}, thick},
+  node distance=7mm and 8mm
+]
+\node[box] (entries) {3 entry points\\[1pt]\footnotesize \texttt{/analyze}, \texttt{/webhook/traffic-event}, \texttt{auto\_scan.py}};
+\node[box, below=of entries] (perception) {Perception\\[1pt]\footnotesize raw domain name};
+\node[box, below=of perception] (features) {Feature extraction\\[1pt]\footnotesize 16 features, live if needed (\texttt{live\_features.py})};
+\node[box, below=of features] (scoring) {Scoring\\[1pt]\footnotesize LightGBM $\rightarrow$ \texttt{ml\_score} (0--100)};
+\node[box, below=of scoring] (decision) {Decision\\[1pt]\footnotesize thresholds 50 / 80};
+\node[box, below left=10mm and 6mm of decision] (noaction) {No automatic action\\[1pt]\footnotesize $<$50 normal, 50--80 suspect (dashboard)};
+\node[accent, below right=10mm and 6mm of decision] (highscore) {score $\geq 80$};
+\node[accent, below=of highscore] (crisisbot) {CrisisBot\\[1pt]\footnotesize unauthenticated webhook};
+\node[accent, below=of crisisbot] (incident) {Incident response\\[1pt]\footnotesize CrisisBot's 5-step runbook};
+\node[box, below=38mm of decision] (dash) {NetScope dashboard};
+
+\draw[arr] (entries) -- (perception);
+\draw[arr] (perception) -- (features);
+\draw[arr] (features) -- (scoring);
+\draw[arr] (scoring) -- (decision);
+\draw[arr] (decision.south) -| (noaction.north);
+\draw[arr] (decision.south) -| (highscore.north);
+\draw[arr] (highscore) -- (crisisbot);
+\draw[arr] (crisisbot) -- (incident);
+\draw[arr] (noaction.south) |- (dash.west);
+\draw[arr] (incident.south) |- (dash.east);
+\end{tikzpicture}
+\caption{NetScope --- pipeline (\texttt{src/netscope\_agent/}), styled to mirror DarkWatch's Figure~\ref{fig:darkwatch-pipeline-main}: a single decision point branches into a plain path (dashboard only) and an accented path that reaches CrisisBot automatically once the score clears 80.}
+\label{fig:netscope-pipeline}
+\end{figure}
+
+Worked example: an external firewall sends
+\texttt{POST /webhook/traffic-event?x\_webhook\_secret=...} with
+\texttt{\{"domain": "xj4k9z-relay.info"\}} and no features attached. The
+shared secret is checked first; since no \texttt{features} dict was
+supplied, \texttt{extract\_all\_features\_live()} computes all 16 (10 from
+the domain string alone, 6 from a real DNS resolution). Say the model
+returns an \texttt{ml\_score} of 87: it clears both the 50 verdict
+threshold (``suspect'') and the 80 auto-action threshold, so the host is
+isolated automatically, with no human in the loop for this particular case.
+
+Unlike DarkWatch (no trained model at all) or PhishHunter (an LLM in the
+decision loop), NetScope is a classic supervised classification pipeline at
+its core: the model is trained offline, exported, and loaded once at
+service startup to score requests in real time. The LLM used later in this
+section never touches the classification decision --- it only writes about
+a result the model has already produced.
+
+\subsection*{Technical Approach --- Two Halves of One Pipeline}
+As in the introduction, NetScope splits cleanly into an offline half and an
+online half, and the codebase implements this as a genuine handoff rather
+than a blurred line:
+
+\begin{itemize}[nosep]
+\item \textbf{Offline training} (a Kaggle notebook, not stored in this repository): loads the public dataset, selects and justifies 16 features out of 44 raw columns, compares five model families under cross-validation, tunes the winner with Optuna, and exports \texttt{netscope\_model.pkl} and \texttt{netscope\_features.pkl}.
+\item \textbf{Online serving} (\texttt{src/netscope\_agent/scorer.py} and the modules around it): loads those two exported files once at startup, reconstructs the same 16 features from nothing but a domain name when a real caller does not supply them, and applies the decision, explanation, and response logic on every query.
+\end{itemize}
+
+The rest of this section follows that same order --- dataset, features,
+model, then the production logic built on top of it --- rather than
+treating the notebook and the running service as two separate stories.
+
+\subsection*{Dataset and Data Preparation}
+The model was trained on the \textbf{CIC-Bell-DNS-Exfiltration 2021}
+dataset (\texttt{dhoogla/cicbelldnsexf2021} on Kaggle), a public dataset
+built specifically for DNS exfiltration detection. It ships in six variants
+--- two cleaning methods (``minimalistic'' and ``opinionated'') crossed with
+three volumes (``clean-Heavy'', ``clean-BenignExtra'', ``clean-Light''). The
+training notebook loads the \texttt{minimalistic-clean-Light.parquet}
+variant; only its two exported artifacts are copied into \texttt{models/}
+for the production service to load (see \texttt{models/README.md}), so this
+section reports what the notebook's own cells and markdown commentary
+state rather than something re-run for this audit.
+
+The raw file holds \textbf{102,762 DNS queries} described by \textbf{44
+columns}, including per-record-type frequency statistics
+(\texttt{A\_frequency}, \texttt{NS\_frequency}, \texttt{CNAME\_frequency},
+and others), domain name structure statistics, TTL statistics, and two
+original label columns: \texttt{GlobalClass} and \texttt{SubClass}.
+\texttt{GlobalClass} takes the values \texttt{"Light Benign"} and
+\texttt{"Light Attack"}. The notebook reduces this to a binary
+\texttt{target} column, with the reasoning spelled out directly in a
+markdown cell: NetScope needs to answer one simple question --- is this
+domain suspicious or not --- so \texttt{GlobalClass} is collapsed into two
+values (0 = Benign, 1 = Attack). Across the 102,762 rows, the real split is
+\textbf{60,088 Benign} against \textbf{42,674 Attack}, a moderate imbalance
+(58.5\,\% / 41.5\,\%) rather than an extreme one. This binary
+\texttt{target} is exactly what \texttt{scorer.py} reproduces in
+production --- \texttt{model.predict\_proba(x)[0][1]} is the model's
+estimate of \texttt{target = 1} (Attack) for one query, turned into the
+0--100 \texttt{ml\_score} every downstream stage relies on.
+
+Before training, the notebook checks for missing values
+(\texttt{isnull().sum()}) and duplicate rows (\texttt{duplicated().sum()}).
+No missing values were found on the label-related columns
+(\texttt{GlobalClass}, \texttt{SubClass}, \texttt{target}); the exact
+duplicate-row count the notebook prints could not be independently
+re-verified in this session, since the notebook itself is not stored in
+this repository and only runs on Kaggle.
+
+\subsection*{DNS Features}
+Of the 44 raw columns, 16 were kept for training. The notebook's own
+justification: keep the numeric columns that describe a domain name and its
+DNS query statistically --- name entropy, length, subdomain count, share of
+digits and special characters, TTL statistics --- rather than the raw
+domain string itself, which a model like this cannot use directly. These
+exact same 16 names, in this exact order, are what
+\texttt{netscope\_features.pkl} exports and what \texttt{NetScopeScorer}
+demands from every caller in production (\texttt{score\_domain()} raises an
+explicit error, rather than silently filling a NaN, if any one of the 16 is
+missing) --- the feature contract is not renegotiated between training and
+serving.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}p{3cm}p{4.8cm}p{5.5cm}@{}}
+\toprule
+\textbf{Feature} & \textbf{What it measures} & \textbf{Why it matters for DNS security} \\
+\midrule
+\texttt{entropy} &
+Shannon entropy of the full domain name &
+A name generated to encode data reads as more random than one a human would
+choose. \\
+
+\texttt{rr\_name\_entropy} &
+Entropy of the name inside the DNS resource record &
+Same signal as \texttt{entropy}, computed one layer closer to the actual DNS
+packet. \\
+
+\texttt{rr\_name\_length} &
+Length of the name inside the resource record &
+Exfiltration techniques encode data into the name, which pushes its length
+toward the protocol's upper limit. \\
+
+\texttt{len} &
+Total length of the domain name (FQDN) &
+Same reasoning: an unusually long name is a classic tunneling signal. \\
+
+\texttt{FQDN\_count} &
+Number of components in the full domain name &
+An unusual chain of subdomains can signal encoded data rather than a
+legitimate naming hierarchy. \\
+
+\texttt{subdomain\_length} &
+Length of the subdomain portion &
+Exfiltration typically encodes data in the subdomain rather than the
+registered domain. \\
+
+\texttt{subdomain} &
+Whether a subdomain is present (derived indicator) &
+Reinforces the signal already carried by \texttt{subdomain\_length}. \\
+
+\texttt{labels} &
+Number of labels (dot-separated segments) in the name &
+An unusual number of segments is a structural hint of encoding. \\
+
+\texttt{labels\_max} &
+Length of the longest single label &
+An abnormally long label rarely occurs in ordinary human naming. \\
+
+\texttt{labels\_average} &
+Average label length &
+A complementary signal, less sensitive to a single extreme label than
+\texttt{labels\_max}. \\
+
+\texttt{numeric} &
+Share of numeric characters in the name &
+Base32/base64/hex-encoded data leaves an unusual proportion of digits
+compared to a normal domain name. \\
+
+\texttt{special} &
+Share of special characters in the name &
+Same reasoning as \texttt{numeric}: encoded data leaves a statistical trace
+in the name's character composition. \\
+
+\texttt{rr\_count} &
+Number of resource records in the DNS response &
+An unusual response volume can signal a channel being used to carry more
+data per query than normal. \\
+
+\texttt{a\_records} &
+Number of A records in the response &
+Some exfiltration or C2 techniques abuse A records to carry data or signal
+status. \\
+
+\texttt{ttl\_mean} &
+Average TTL of the DNS records observed &
+Infrastructure tied to malicious activity often uses very short TTLs
+(fast-flux) or otherwise atypical TTLs compared to legitimate traffic. \\
+
+\texttt{ttl\_variance} &
+Variance of TTL across observed records &
+High TTL variance can betray an unstable or deliberately shifting
+infrastructure, typical of attack infrastructure. \\
+\bottomrule
+\end{tabular}
+\caption{The 16 features NetScope uses to score a DNS query.}
+\end{table}
+
+These 16 columns are convenient during training because the dataset already
+provides them. A real firewall or proxy, in production, only ever hands
+over a domain name --- it does not pre-compute Shannon entropy or TTL
+variance. \texttt{live\_features.py} closes this gap, treating the 16
+features as two families: \textbf{10 name-only features}
+(\texttt{entropy}, \texttt{len}, \texttt{FQDN\_count},
+\texttt{subdomain\_length}, \texttt{subdomain}, \texttt{numeric},
+\texttt{special}, \texttt{labels}, \texttt{labels\_max},
+\texttt{labels\_average}), computable from the domain string alone, and
+\textbf{6 DNS-response features} (\texttt{rr\_name\_entropy},
+\texttt{rr\_name\_length}, \texttt{rr\_count}, \texttt{a\_records},
+\texttt{ttl\_mean}, \texttt{ttl\_variance}), which require an actual DNS
+resolution against a public resolver and fall back to 0 --- rather than
+raising --- if \texttt{dnspython} is missing or the resolution fails.
+The module's own documentation is explicit about the one feature it cannot
+faithfully reconstruct: \texttt{ttl\_variance} is always 0 on this live
+path, because a single DNS resolution only ever yields a single TTL value
+--- a true variance would need several observations spread over time, which
+this synchronous request/response flow does not have.
+
+\subsection*{Feature Engineering and Selection}
+The notebook does not simply fix the 16 features up front and move on. It
+ranks them by importance (using the \texttt{feature\_importances\_} of a
+trained Random Forest), then re-runs the comparison keeping only the top 8
+to see how much performance is lost.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lc@{}}
+\toprule
+\textbf{Feature} & \textbf{Importance (Random Forest)} \\
+\midrule
+\texttt{FQDN\_count}        & 0.174 \\
+\texttt{subdomain\_length}  & 0.133 \\
+\texttt{special}            & 0.126 \\
+\texttt{numeric}            & 0.124 \\
+\texttt{ttl\_mean}          & 0.121 \\
+\texttt{labels}             & 0.115 \\
+\texttt{labels\_average}    & 0.042 \\
+\texttt{labels\_max}        & 0.029 \\
+\texttt{rr\_count}          & 0.029 \\
+\texttt{rr\_name\_entropy}  & 0.026 \\
+\texttt{ttl\_variance}      & 0.025 \\
+\texttt{rr\_name\_length}   & 0.022 \\
+\texttt{subdomain}          & 0.015 \\
+\texttt{len}                & 0.010 \\
+\texttt{entropy}            & 0.009 \\
+\texttt{a\_records}         & 0.000 \\
+\bottomrule
+\end{tabular}
+\caption{Feature importance from the Random Forest trained in the notebook.}
+\end{table}
+
+Dropping to the top 8 features barely moves the result: F1 = 0.8309 with all
+16 features against F1 = 0.8301 with only 8. Six features
+(\texttt{FQDN\_count}, \texttt{subdomain\_length}, \texttt{special},
+\texttt{numeric}, \texttt{ttl\_mean}, \texttt{labels}) already carry more
+than 79\,\% of the total importance. The model that actually gets exported
+--- and the one \texttt{scorer.py} loads in production --- keeps all 16
+features rather than this reduced set, which is why \texttt{live\_features.py}
+still has to reconstruct all 16 and not just the top 8.
+
+\subsection*{Machine Learning Model}
+Several model families were tested and compared. A first, simple pass
+(Random Forest and XGBoost on a single train/test split) gives close
+results (accuracy 0.835 for both). Before going further, the notebook
+checks whether a trained model is even worth the trouble, by testing a
+naive rule: flag a domain as suspicious if its entropy exceeds 3.5. That
+rule reaches an accuracy of 0.582 but an F1 of only 0.0236 (precision
+0.388, recall 0.012) --- it misses almost every real attack. On the same
+test set, the trained models clear 0.83 F1, which is the honest answer to
+whether the model --- and the entire production pipeline built around it
+--- earns its complexity.
+
+The notebook then compares five models with 5-fold stratified
+cross-validation on F1 and ROC-AUC:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Model} & \textbf{F1 mean} & \textbf{F1 (std)} & \textbf{ROC-AUC mean} & \textbf{ROC-AUC (std)} \\
+\midrule
+LightGBM              & 0.8312 & 0.0017 & 0.8704 & 0.0012 \\
+XGBoost                & 0.8309 & 0.0016 & 0.8707 & 0.0012 \\
+Random Forest           & 0.8309 & 0.0017 & 0.8698 & 0.0011 \\
+HistGradientBoosting    & 0.8308 & 0.0017 & 0.8707 & 0.0009 \\
+Logistic Regression     & 0.8221 & 0.0015 & 0.8685 & 0.0021 \\
+\bottomrule
+\end{tabular}
+\caption{Five-fold stratified cross-validation across five supervised models.}
+\end{table}
+
+Worth stating plainly: the four tree/boosting models are practically
+indistinguishable --- the gap between the best and the worst of the four is
+under 0.05 F1 points, smaller than their own standard deviation. Only
+logistic regression, the simplest model, clearly trails behind. Picking
+LightGBM owes more to a marginal edge and training/inference speed than to
+any real performance gap over the other tree-based models. This choice also
+has a direct production consequence: \texttt{NetScopeScorer} builds a
+\texttt{shap.TreeExplainer}, which works cleanly for LightGBM (and the
+other tree/boosting models tested) but would fail for logistic regression
+--- one more reason the tree-based family, not just LightGBM specifically,
+was the right lane to stay in.
+
+LightGBM's hyperparameters were then tuned with \textbf{Optuna} (Bayesian
+search, 50 trials) rather than an exhaustive grid --- a \texttt{GridSearchCV}
+had already been used earlier in the notebook, but only for a preliminary
+Random Forest tuning pass, and the notebook itself notes that grid search is
+``expensive and coarse'' compared to a Bayesian search for the final tuning
+step. Optuna's best hyperparameters: \texttt{n\_estimators=112},
+\texttt{max\_depth=6}, \texttt{learning\_rate$\approx$0.144},
+\texttt{num\_leaves=51}, \texttt{min\_child\_samples=23},
+\texttt{subsample$\approx$0.946}, \texttt{colsample\_bytree$\approx$0.547},
+\texttt{reg\_alpha$\approx$1.01}, \texttt{reg\_lambda$\approx$9.65e-8}, with
+a cross-validated F1 of \textbf{0.8313}. The tuned model beat the base
+LightGBM in the comparison, so it is the one exported (the notebook prints:
+``Best model: tuned LightGBM (CV F1 = 0.8313)''). On the held-out test set,
+its classification report reads:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{Support} \\
+\midrule
+0 (Benign) & 1.00 & 0.72 & 0.84 & 12,018 \\
+1 (Attack) & 0.72 & 1.00 & 0.83 & 8,535 \\
+\midrule
+Accuracy & \multicolumn{4}{c}{0.84} \\
+\bottomrule
+\end{tabular}
+\caption{Classification report of the final tuned LightGBM model on the test set.}
+\end{table}
+
+Read honestly, this table means the model misses zero attacks on this test
+set (recall = 1.00 on the Attack class) at the cost of a real false-positive
+rate (precision = 0.72, so roughly 28\,\% of benign traffic gets flagged).
+In a security context, trading precision for recall this way is generally
+the right call --- missing a real exfiltration attempt is more costly than
+chasing a false alarm, though this reading is not stated as a deliberate
+design goal anywhere in the notebook itself and should be treated as an
+observation made after the fact, not a documented objective. It also
+foreshadows a production choice: with a model this willing to flag benign
+traffic, the service cannot afford to act automatically on every
+``suspect'' verdict --- exactly why the production code, not the notebook,
+introduces a second, much higher bar before anything happens without a
+human (see Risk Scoring and Decision, below).
+
+The final model and its 16-feature list are exported with \texttt{joblib}
+(\texttt{netscope\_model.pkl}, \texttt{netscope\_features.pkl}). This is the
+handoff point between the two halves of NetScope: everything before this
+line happened once, offline, on Kaggle; everything after it happens
+continuously, in \texttt{src/netscope\_agent/}, every time a query is
+scored.
+
+\subsection*{Risk Scoring and Decision}
+\texttt{NetScopeScorer.\_\_init\_\_} loads both exported files once at
+service startup (\texttt{joblib.load}) and raises a clear
+\texttt{FileNotFoundError} pointing to \texttt{models/README.md} if they are
+missing, rather than failing obscurely later. \texttt{score\_domain()} then
+does exactly what the notebook's final classification report measured:
+\texttt{proba = model.predict\_proba(x)[0][1]}, turned into
+\texttt{ml\_score = round(proba * 100, 1)} --- the single number every
+other stage of the pipeline (thresholds, SHAP, the LLM, the dashboard) is
+built around.
+
+The production code, not the notebook, is where the actual decision logic
+lives, and it uses \textbf{two separate thresholds} that should not be
+confused with each other:
+
+\begin{itemize}[nosep]
+\item \textbf{50.0} --- the verdict threshold (\texttt{NetScopeScorer.threshold} in \texttt{scorer.py}): above it, a query is labeled \texttt{"suspect"} instead of \texttt{"normal"} for display purposes.
+\item \textbf{80.0} --- \texttt{AUTO\_ACT\_THRESHOLD} in \texttt{auto\_scan.py}: above it, the system isolates the host and notifies CrisisBot \emph{automatically}, without waiting for a human to click anything. This same threshold and constant gate both the autonomous pull loop and the push webhook (\texttt{api.py} imports \texttt{AUTO\_ACT\_THRESHOLD} directly from \texttt{auto\_scan.py} rather than redefining it).
+\end{itemize}
+
+A third, purely cosmetic level exists only for the dashboard:
+\texttt{risk\_level()} buckets the score into four labels (Low $<$30, Medium
+$<$60, High $<$80, Critical $\geq$80), with no effect on any decision.
+
+The three-term composite score explored in the training notebook (0.7 ×
+ML score + 0.2 × traffic score + 0.1 × human score) \textbf{does not exist
+in the production code}. The score used everywhere in the running service
+is simply \texttt{ml\_score = round(proba × 100, 1)}. A user's simulated
+human risk profile --- looked up deterministically from a fictional
+directory, \texttt{data/users.json}, via a SHA-256 hash of the hostname
+(\texttt{get\_user\_for\_host} in \texttt{actions.py}), standing in for a
+real HR or phishing-simulation platform such as GoPhish or KnowBe4 ---
+shapes the wording of the recommendation shown to the analyst (through
+\texttt{human\_priority()}, which buckets the profile's own risk score into
+``élevée'' $\geq$70, ``moyenne'' $\geq$40, or ``faible'' below that), not a
+blended numeric score.
+
+\subsection*{SHAP Explainability}
+This is a case where the notebook and the production code disagree, and the
+production code is the one that matters here. SHAP never appears in the
+training notebook --- but the running service genuinely uses it.
+\texttt{NetScopeScorer} builds a \texttt{shap.TreeExplainer(self.model)} at
+startup, and every scored query goes through an \texttt{explain()} call
+that returns the top 4 features driving that particular decision, each
+tagged with a direction (increases or decreases risk). These get translated
+into analyst-readable labels via a fixed dictionary in \texttt{scorer.py}
+(\texttt{"rr\_name\_entropy"} $\rightarrow$ \emph{``Entropie du nom de
+domaine élevée''}) and shown on the dashboard as ``Main factors''. The code
+degrades gracefully (\texttt{self.explainer = None}, and \texttt{explain()}
+then returns an empty list instead of raising) if \texttt{TreeExplainer}
+fails to build --- relevant for a model like logistic regression, tested in
+the model comparison above but not the one ultimately kept, which is
+precisely why that comparison mattered for more than just picking the
+highest F1.
+
+\subsection*{Role of the LLM}
+NetScope also calls an LLM (Groq, \texttt{llama-3.1-8b-instant}), but
+strictly for writing, never for deciding --- the system prompt forbids it
+explicitly: ``Ne jamais reclasser l'alerte (suspect/normal) : c'est déjà
+décidé en amont'' (\emph{never reclassify the alert: that decision has
+already been made upstream}). The LLM receives the score already computed,
+the SHAP factors already computed, and the human risk profile already
+looked up, and produces only a natural-language explanation and a
+recommended action, returned as strict JSON with exactly two keys
+(\texttt{explanation}, \texttt{recommendation}). With no Groq API key
+configured, or if the call fails or returns something outside that shape, a
+template-based fallback (\texttt{\_template\_fallback} in \texttt{llm.py})
+builds the same kind of explanation from the same real data --- the same
+SHAP factors, the same score, the same human-priority bucket --- never
+inventing anything. This role --- explain, never decide --- lines up with
+the principle already stated in Chapter~2, and puts NetScope alongside
+DarkWatch's integrated mode and PhishHunter's deterministic path as places
+where a language model narrates a decision it never made.
+
+\subsection*{Continuous Monitoring and Memory}
+NetScope does not use a learned memory either, only a lightweight
+in-process cache, and like DarkWatch the exact mechanism differs by entry
+point. \texttt{auto\_scan.py} keeps an in-memory set, \texttt{\_already\_acted},
+of domains already isolated automatically during the current run, so the
+same domain is not re-isolated on every subsequent draw of the sample; the
+push webhook (\texttt{/webhook/traffic-event}) checks and updates the same
+module-level set, so a domain isolated via one entry point is not
+re-isolated via the other. This set --- exactly like DarkWatch's in-memory
+deduplication set for its background auto-scan loop --- is lost on
+restart: nothing here is persisted to disk, so a fresh process re-evaluates
+every domain as if seeing it for the first time. On-demand scoring through
+\texttt{/analyze} keeps no memory at all and never triggers automatic
+isolation regardless of score, by design --- that endpoint only ever
+returns a score for the dashboard to display.
+
+\subsection*{Integration with CrisisBot}
+A single shared function, \texttt{actions.record\_isolation}, logs the
+incident (\texttt{data/incidents.json}, with \texttt{domain}, \texttt{user},
+\texttt{ml\_score}, a timestamp, and a \texttt{source} tag) and notifies
+CrisisBot, regardless of whether it was triggered by a human click
+(\texttt{POST /isolate}), the autonomous loop, or the push webhook --- so
+the incident only gets logged once no matter which of the three entry
+points fired it. The notification itself (\texttt{crisisbot\_client.py})
+follows the same best-effort pattern seen with DarkWatch and the other
+detection agents: a plain \texttt{POST} to \texttt{CRISISBOT\_URL}
+(\texttt{/api/webhook/incident}), a 3-second timeout, and \textbf{no
+authentication of any kind on either side of the call} --- the exception is
+caught, a message is printed to the console, and NetScope continues
+operating normally, with no retry, exactly the same limitation already
+flagged for DarkWatch rather than a NetScope-specific gap.
+
+\subsection*{From Data to Display}
+The NetScope dashboard (\texttt{static/netscope.html}) opens with a dark
+``traffic card'' labeled as coming from a firewall/proxy webhook
+(Fortinet, PaloAlto are named as examples), listing domains fetched from
+\texttt{GET /sample-traffic?n=4} with their \texttt{ml\_score} shown as a
+percentage; rows flagged \texttt{"suspect"} are highlighted in red with a
+warning icon. The page always focuses on the first suspect result in that
+sample: its domain, its NetScope risk score and colored level badge
+(Faible/Moyen/Élevé/Critique), and its SHAP ``main factors'' list, each
+prefixed with a \texttt{+} or \texttt{--} sign for the direction it pushed
+the score. Below that, a profile card shows the correlated user's name,
+department, and human risk score, followed by a one-sentence
+correlation message whose wording depends on that user's priority bucket
+(élevée / moyenne / faible) --- the same three-way bucket produced by
+\texttt{human\_priority()} described above under Risk Scoring and
+Decision. A single
+``Isoler le poste'' button calls \texttt{POST /isolate} and, on success,
+confirms the exact timestamp and states explicitly that the incident was
+logged to \texttt{data/incidents.json} --- the same shared function
+described above, this time with \texttt{source="manual"}.
+
+\subsection*{Limitations}
+All five supervised models compared share the same structural limit: they
+only recognize attacks that statistically resemble what is already present
+in CIC-Bell-DNSExF2021. A genuinely new DNS exfiltration technique, never
+represented in that dataset, could slip through undetected --- a limit of
+the offline training data that no amount of production engineering around
+it can change. \texttt{live\_features.py} documents an honest limitation of
+its own on the production side: \texttt{ttl\_variance} is always 0 on the
+live path, since a single DNS resolution only yields a single TTL, and its
+reconstruction of the DNS response features is a reasonable approximation,
+not a certified match to the original dataset authors' exact methodology
+--- a gap between the offline features the model learned from and the
+online features it is actually served in production, even though both are
+computed from the same 16 definitions. Neither the CrisisBot call nor the
+dashboard itself is authenticated, the same limitation already noted for
+DarkWatch. The project's own \texttt{README.md} still lists verifying the
+absence of data leakage in the features among its next steps --- something
+this audit did not re-verify and that remains an open question.
+
+\subsection*{Conclusion}
+NetScope pairs a conventional but carefully built machine learning pipeline
+--- five model families compared under cross-validation, Bayesian
+hyperparameter tuning, and an explicit sanity check against a naive rule
+--- with a production layer that closes the gap between a research dataset
+and a real domain name (\texttt{live\_features.py}), adds real SHAP
+explainability, and lets an LLM write but never decide. The two thresholds
+that actually drive behavior, 50 for the suspect/normal verdict and 80 for
+automatic isolation, live entirely in the service code, not the training
+notebook, and neither matches a single ``80/100'' figure loosely used
+elsewhere. As a supervised classifier, NetScope remains bound by what its
+training data has already seen, a limitation the project's own code and
+documentation acknowledge rather than hide. The next section turns to
+PhishHunter, the only other agent in \ProjectName{} built around a trained
+model, and the one where --- unlike NetScope's LLM, confined to writing ---
+a language model is deliberately allowed a second, genuinely agentic
+decision path of its own.

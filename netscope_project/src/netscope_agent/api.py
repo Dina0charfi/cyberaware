@@ -62,7 +62,7 @@ def stop_auto_scan():
 
 @app.get("/")
 def serve_page():
-    return FileResponse(STATIC_DIR / "netscope.html")
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/sample-traffic")

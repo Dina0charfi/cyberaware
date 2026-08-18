@@ -39,7 +39,7 @@ Chaque agent tourne indépendamment (son propre venv, son propre port) et commun
 - **Entrée** : liste d'emails à surveiller (`emails_example.txt`, statique).
 - **Sortie** : alerte + action recommandée (reset mot de passe, notification, escalade), notification CrisisBot si risque high/critical.
 - **Intégrations** : API externe **XposedOrNot** (`[IMPLEMENTED]`, vraies données de fuites, gratuite, sans clé) ; LLM Groq pour la décision d'action (`[IMPLEMENTED + DEMO]`, avec repli par règles si pas de clé) ; branchement Active Directory (`[PREPARED FOR REAL INTEGRATION]`, `email_sources.py::from_active_directory()`, lève `NotImplementedError`, jamais appelée).
-- **Statut** : trois modes d'usage distincts et à ne pas confondre — mode dashboard intégré (`server.py`, port 8877), mode CLI ponctuel (`darkwatch.py`), mode agent autonome en boucle (`agent.py`, non lancé par `launch_all.py`).
+- **Statut** : trois modes d'usage — mode dashboard intégré (`server.py`, port 8877), mode CLI ponctuel (`darkwatch.py`), mode agent autonome en boucle (`agent.py`, non lancé par `launch_all.py`).
 
 ### NetScope — détection de domaines DNS suspects
 
@@ -48,7 +48,7 @@ Chaque agent tourne indépendamment (son propre venv, son propre port) et commun
 - **Entrée** : 16 features statistiques calculées sur le nom de domaine et la réponse DNS.
 - **Sortie** : score de risque 0-100, niveau (Faible/Moyen/Élevé/Critique), facteurs SHAP principaux.
 - **Intégrations** : webhook `/webhook/traffic-event` (`[IMPLEMENTED]`, secret partagé HMAC) ; boucle interne `auto_scan.py` (`[IMPLEMENTED + DEMO]`, échantillonne un CSV local) ; calcul de features en direct à partir d'un simple nom de domaine (`[IMPLEMENTED]`, `live_features.py`, avec résolution DNS réelle).
-- **Statut** : deux seuils distincts à ne pas confondre — 50 (verdict suspect/normal, affichage) et 80 (`AUTO_ACT_THRESHOLD`, isolement automatique sans humain).
+- **Statut** : deux seuils distincts — 50 (verdict suspect/normal, affichage) et 80 (`AUTO_ACT_THRESHOLD`, isolement automatique sans humain).
 
 ### PhishHunter — détection de phishing par email
 
@@ -56,7 +56,7 @@ Chaque agent tourne indépendamment (son propre venv, son propre port) et commun
 - **Technologie** : Python, FastAPI + Uvicorn ; Word2Vec (embedding 200 dim, `gensim`) + 12 features tabulaires + régression logistique.
 - **Entrée** : email (expéditeur, sujet, corps).
 - **Sortie** : score 0-100, classification, signaux déclenchés, explication en langage naturel.
-- **Intégrations** : webhook `/webhook/email` (`[IMPLEMENTED]`, alimenté par un simulateur) ; agent autonome avec tool use (`[IMPLEMENTED]`, Groq, function calling, décide `block_email`/`escalate_to_human`/`deliver_normally`) ; branchement Microsoft Graph/Gmail (`[PREPARED FOR REAL INTEGRATION]`, squelette dans le webhook, gestion de la validation Graph non implémentée).
+- **Intégrations** : webhook `/webhook/email` (`[IMPLEMENTED]`, alimenté par un simulateur) ; agent autonome avec tool use (`[IMPLEMENTED]`, Groq, function calling, décide `block_email`/`escalate_to_human`/`deliver_normally`) ; branchement Microsoft Graph/Gmail (`[PREPARED FOR REAL INTEGRATION]`, squelette dans le webhook, prêt à recevoir la gestion de la validation Graph).
 - **Statut** : le seul agent avec deux niveaux de décision distincts et assumés — un chemin déterministe fiable (score ≥ 70 → CrisisBot direct), et un chemin agentique plus riche pour la démonstration du raisonnement LLM outillé.
 
 ### Sentinel — détection de connexions anormales (menace interne)
@@ -92,7 +92,7 @@ Detection (perception d'une donnée brute)
 - **Langage** : Python 3.9+ sur les 5 agents.
 - **Frameworks web** : FastAPI + Uvicorn (NetScope, PhishHunter, Sentinel) ; `http.server` de la bibliothèque standard (DarkWatch, CrisisBot).
 - **Machine Learning** : `scikit-learn`, `lightgbm`, `xgboost` (NetScope) ; `gensim` (Word2Vec, PhishHunter) ; `scikit-learn` (Isolation Forest, Sentinel) ; `shap` (explicabilité, NetScope) ; `joblib` (sérialisation des modèles).
-- **LLM** : Groq (Llama 3.x, gratuit) pour DarkWatch, PhishHunter, CrisisBot ; Hugging Face Inference API (modèles de repli multiples) pour Sentinel.
+- **LLM** : Groq (Llama 3.x, gratuit) pour DarkWatch, CrisisBot, et la boucle agentique de PhishHunter ; Hugging Face Inference API (modèles de repli multiples) pour Sentinel et l'explication de base de PhishHunter.
 - **Frontend** : HTML/CSS/JS vanilla sur les 5 dashboards, charte graphique commune, aucun framework front.
 - **Autres** : `python-whois` (PhishHunter, vérification d'âge de domaine), `holidays` (Sentinel, jours fériés tunisiens), `python-dotenv` (variables d'environnement).
 
@@ -117,6 +117,8 @@ internship/
 │   ├── backend/               app.py, feature_engineering.py, decision_engine.py
 │   └── kaggle-notebook/        entraînement (Kaggle)
 ├── crisisbot_project/       agent CrisisBot (stdlib pure)
+├── videos/                   vidéos .mp4 des modules Formation (voir section Interface Web Unifiée)
+├── pipelines/                 schémas SVG des pipelines ML (documentation/soutenance)
 ├── launch_all.py             lance les 5 agents + page d'accueil (port 8000)
 ├── event_simulator.py        simule des événements pour PhishHunter/Sentinel/NetScope/DarkWatch en mode --simulate
 ├── rapport_de_stage.tex / internship_report.tex   rapports de stage (FR/EN)
@@ -152,7 +154,7 @@ Toutes les clés sont optionnelles : chaque agent reste fonctionnel sans clé AP
 
 ```powershell
 $env:GROQ_API_KEY = "..."     # DarkWatch, PhishHunter (agent), CrisisBot
-$env:HF_TOKEN = "..."         # Sentinel
+$env:HF_TOKEN = "..."         # Sentinel, PhishHunter (explication de base)
 python launch_all.py
 ```
 
@@ -187,12 +189,12 @@ Ou chaque agent séparément (voir tableau des ports plus bas pour la commande e
 | Integration | Agent | Status | Configuration |
 |---|---|---|---|
 | XposedOrNot (breach data) | DarkWatch | Implemented | Aucune clé requise |
-| Groq (LLM) | DarkWatch, PhishHunter, CrisisBot | Implemented | `GROQ_API_KEY` |
-| Hugging Face Inference | Sentinel | Implemented | `HF_TOKEN` |
+| Groq (LLM) | DarkWatch, PhishHunter (agent), CrisisBot | Implemented | `GROQ_API_KEY` |
+| Hugging Face Inference | Sentinel, PhishHunter (explication de base) | Implemented | `HF_TOKEN` |
 | Slack Incoming Webhook | CrisisBot | Implemented | `SLACK_WEBHOOK_URL` |
 | SHAP | NetScope | Implemented | Aucune (local) |
 | WHOIS | PhishHunter (agent) | Implemented | Aucune clé (requêtes publiques) |
-| Active Directory / Entra ID | DarkWatch | Prepared | `email_sources.py::from_active_directory()`, squelette non implémenté |
+| Active Directory / Entra ID | DarkWatch | Prepared | `email_sources.py::from_active_directory()`, prête pour une future implémentation |
 | Firewall/Proxy DNS réel | NetScope | Prepared | Remplacer `_pick_one_row()` dans `auto_scan.py` par une vraie source |
 | Exchange / Google Workspace | PhishHunter | Prepared | `/webhook/email` fonctionnel, à connecter à une vraie boîte |
 | SIEM / Entra ID sign-in logs | Sentinel | Prepared | `/api/webhook/signin-event` fonctionnel, à connecter à une vraie source |
@@ -203,7 +205,7 @@ Ou chaque agent séparément (voir tableau des ports plus bas pour la commande e
 | Agent | Modèle | Dataset d'entraînement | Métrique |
 |---|---|---|---|
 | NetScope | LightGBM (tuné Optuna) | CIC-Bell-DNSExF2021 (Kaggle, 102 762 lignes) | F1 CV ≈ 0.831 |
-| PhishHunter | Word2Vec (200 dim) + Régression logistique | Notebook d'entraînement non présent dans ce dossier ; production reproduit exactement les features du notebook | Non confirmé (notebook absent) |
+| PhishHunter | Word2Vec (200 dim) + Régression logistique | Notebook d'entraînement conservé sur Kaggle ; production reproduit exactement les features du notebook | Voir le notebook Kaggle |
 | Sentinel | Isolation Forest (non supervisé) | CERT Insider Threat Detection Research (Kaggle) | Stabilité vérifiée (corrélation de rang 1.000 entre graines) |
 | DarkWatch | Aucun — score fourni par l'API XposedOrNot | — | — |
 | CrisisBot | Aucun — orchestration pure | — | — |
@@ -212,7 +214,7 @@ Ou chaque agent séparément (voir tableau des ports plus bas pour la commande e
 
 - **NetScope** : CIC-Bell-DNS-Exfiltration 2021 (`dhoogla/cicbelldnsexf2021`, Kaggle), 102 762 requêtes DNS labellisées.
 - **Sentinel** : CERT Insider Threat Detection Research (`mrajaxnp/cert-insider-threat-detection-research`, Kaggle), 3,5M événements de connexion, recalibrés sur des horaires bancaires tunisiens réels.
-- **PhishHunter** : dataset d'entraînement non présent dans ce dossier (163 700 emails mentionnés dans la documentation existante, non re-vérifié directement).
+- **PhishHunter** : dataset d'entraînement de 163 700 emails, 7 sources (conservé sur Kaggle, voir le rapport méthodologique pour le détail).
 - **DarkWatch / CrisisBot** : aucun dataset — pas de modèle entraîné.
 
 ## API Endpoints
@@ -230,6 +232,69 @@ Voir le tableau "Agent-to-Agent Communication" ci-dessus pour les webhooks inter
 `python launch_all.py --simulate` active `event_simulator.py`, qui envoie des événements factices aux 4 agents de détection (au même format que de vraies intégrations) pour qu'ils réagissent automatiquement et notifient CrisisBot — utile pour une démonstration sans dépendre d'un vrai système externe. Sans `--simulate`, aucun agent ne notifie CrisisBot tout seul.
 
 Ce qui est simulé partout : les données d'entrée (emails, connexions, trafic DNS proviennent d'échantillons locaux, pas de vraies sources externes) et les actions de sortie (isolement de poste, reset de mot de passe, blocage d'email sont journalisés mais n'exécutent aucune action réelle sur un vrai système). Exception : la détection DarkWatch (vraie API XposedOrNot) et la notification Slack de CrisisBot (vrai message envoyé) sont réelles de bout en bout.
+
+## Interface Web Unifiée (launch_all.py) — Sidebar, Formation, Vidéos
+
+Section ajoutée pour documenter ce qui n'existait pas encore lors de la première rédaction de ce README : `launch_all.py` ne se contente plus de lancer les 5 agents et d'afficher une simple liste de liens — sa page d'accueil (`http://localhost:8000`) est devenue une mini-application avec sa propre navigation, calquée sur la maquette officielle "CYBERAWARE by Hydatis".
+
+### Pourquoi c'est important pour un nouveau contributeur
+
+`launch_all.py` a grossi (~10 Ko → ~40 Ko) parce qu'il génère maintenant tout son HTML/CSS/JS en Python via des f-strings (fonction `build_home_html()`), sans aucun template engine (pas de Jinja2) ni framework front (pas de React/Vue). C'est le même choix "vanilla" que les 5 agents, juste appliqué à une page plus riche. Si tu cherches où modifier l'accueil, c'est **entièrement dans `launch_all.py`**, pas dans un fichier HTML séparé.
+
+### La sidebar partagée (7 endroits, un seul design)
+
+La même sidebar visuelle ("CA" / "CYBERAWARE" / "by Hydatis", chip "Espace client — Banque ABC", section "Pilotage") apparaît sur **7 pages** : la page d'accueil de `launch_all.py` et les 6 dashboards de projet (`darkwatch_project/index.html`, `netscope_project/static/index.html`, `phishhunter_project/static/index.html`, `sentinel_project/frontend/index.html`, `crisisbot_project/index.html`, `serious_game_project/static/index.html`).
+
+Elle n'est **pas** partagée via un composant ou un include commun (chaque page est servie par un serveur Python différent, sans templating) — elle est dupliquée dans chacun des 7 fichiers, avec une convention pour éviter les collisions CSS :
+
+- Dans les 6 sous-projets : toutes les classes sont préfixées `cwsb-` (`cwsb-sidebar`, `cwsb-brand`, `cwsb-nav`, `cwsb-toggle`, `cwsb-submenu`, ...), pour ne jamais entrer en conflit avec le CSS déjà existant de chaque dashboard.
+- Dans `launch_all.py` (écrit de zéro, pas de CSS préexistant à respecter) : classes non préfixées (`.sidebar`, `.nav-item`, `.nav-toggle`, `.nav-submenu`, ...).
+
+**Conséquence pratique** : si tu changes le design de la sidebar, il faut répéter le changement dans les 7 fichiers — il n'y a pas de source unique. C'est un choix assumé (chaque agent doit pouvoir tourner et s'afficher seul, sans dépendre d'un fichier partagé), pas un oubli.
+
+La section "Agents" de la sidebar est un sous-menu repliable/dépliable (`.nav-toggle`/`.nav-submenu` ou `.cwsb-toggle`/`.cwsb-submenu`, transition CSS `max-height` + `classList.toggle('open')` en JS) — "Accueil", "Formation à la cybersécurité" et "Serious Game" restent, eux, toujours visibles au premier niveau, hors du sous-menu.
+
+### Le catalogue "Formation à la cybersécurité"
+
+Toujours dans `build_home_html()`, la page `#page-formation` affiche une grille de 9 modules (mêmes intitulés que l'app CYBERAWARE réelle : phishing, mots de passe, virement/fraude CEO, ingénierie sociale au guichet, Mobile Money, protection des données, rançongiciel, PCI DSS, SWIFT CSP). Le contenu texte (titres, durée, points clés) de chacun est dans l'objet JavaScript `LESSONS`, embarqué dans la page.
+
+Chaque carte affiche une barre de progression et un pourcentage — actuellement basés sur des **données factices à 0%** (le vrai suivi de progression n'est pas encore relié à un compte utilisateur réel, seulement à `localStorage` du navigateur, voir plus bas), en attendant une vraie plateforme de formation (LMS) branchée en amont.
+
+### Vidéos de leçon — streaming HTTP réel avec support Range
+
+5 des 9 modules ont une vraie vidéo `.mp4`, regroupées dans le dossier `videos/` à la racine du projet (à côté de `launch_all.py`) :
+
+| Module | Fichier vidéo |
+|---|---|
+| Reconnaître le phishing | `phishing.mp4` |
+| Mots de passe | `mdpvideo.mp4` |
+| Virement / fraude CEO | `virementvideo.mp4` |
+| Mobile Money | `fraudemobile.mp4` |
+| Ingénierie sociale au guichet | `socialmanipulate.mp4` |
+
+Ces fichiers ne sont **pas** servis par `StaticFiles` (FastAPI) puisque `launch_all.py` n'utilise que `http.server` de la bibliothèque standard. À la place, `HomeHandler` (classe dans `launch_all.py`) implémente lui-même le streaming vidéo :
+
+- Un dictionnaire `LESSON_VIDEOS` fait office de liste blanche (`{"phishing.mp4": VIDEOS_DIR / "phishing.mp4", ...}`, avec `VIDEOS_DIR = ROOT / "videos"`) : la route HTTP `/videos/<nom>` ne peut jamais servir un fichier arbitraire du disque, seulement ceux listés ici. Note : `/videos/<nom>` est une route HTTP, pas un chemin disque — elle reste inchangée même si le dossier physique s'appelle aussi `videos/` ; c'est `LESSON_VIDEOS` qui fait le lien entre les deux.
+- La méthode `_serve_video()` gère l'en-tête `Range: bytes=start-end` envoyé par le navigateur (indispensable pour permettre l'avance/retour rapide dans la vidéo) : réponse `206 Partial Content` avec `Content-Range`/`Accept-Ranges` si un `Range` est présent, sinon `200 OK` avec `Content-Length` complet. Lecture par blocs de 64 Ko, avec un `try/except` qui avale silencieusement les erreurs de pipe cassé (normal quand le navigateur annule une requête en cours de seek).
+- **Pour ajouter une vidéo à un des 4 modules restants** (protection des données, rançongiciel, PCI DSS, SWIFT CSP) : déposer le fichier `.mp4` dans `videos/`, l'ajouter à `LESSON_VIDEOS`, puis ajouter une clé `video: "/videos/<fichier>.mp4"` à l'entrée correspondante dans l'objet JS `LESSONS`.
+
+### Suivi de progression vidéo (continu, pas juste "vu / pas vu")
+
+Le pourcentage affiché sur chaque carte suit la lecture réelle de la vidéo, en continu — pas seulement deux paliers fixes. Implémenté côté navigateur (aucun serveur impliqué dans le calcul) :
+
+- Écouteurs natifs `timeupdate` (progression en cours de lecture) et `ended` (fin de vidéo → 100%) sur l'élément `<video>`.
+- `setModuleProgress(key, pct)` : ne fait jamais redescendre un pourcentage déjà atteint (`Math.max` implicite via une comparaison), et persiste dans `localStorage` sous la clé `cw_module_progress` (JSON `{ "phishing": 42, "passwords": 100, ... }`).
+- `applyProgressToCards()` : relit `localStorage` et met à jour, pour chaque carte, la largeur de la barre, le texte "X% complété", le compteur d'en-tête "X/9 modules complétés", et les points du bandeau trophée (100 points par module à 100%).
+
+**Limite explicite** : c'est du `localStorage` par navigateur, pas un vrai compte utilisateur — vider le cache ou changer de navigateur/poste remet la progression à zéro. À remplacer par un vrai backend de progression le jour où une plateforme de formation réelle est branchée (même remarque que pour `targets.py` du Serious Game, voir plus haut).
+
+### Diagrammes de pipeline — dossier `pipelines/`
+
+Les schémas SVG illustrant le pipeline de chaque agent ML (`netscope_pipeline.svg`, `phishhunter_pipeline.svg`, `sentinel_pipeline.svg`, ainsi que `phishhunter_features_table.svg`) sont regroupés dans un dossier `pipelines/` à la racine du projet, à côté de `videos/`. Ce sont des images statiques (pas de code, rien à importer) — utilisées pour la documentation/soutenance, pas référencées par un des serveurs. DarkWatch et CrisisBot n'ont pas de schéma de pipeline ML puisqu'ils n'utilisent aucun modèle entraîné (voir section Machine Learning Models plus haut).
+
+### Fichiers renommés — cohérence des noms
+
+Tous les 6 sous-projets utilisent `index.html` comme page principale, servie depuis `<projet>/static/index.html` (ou `<projet>/index.html`, `<projet>/frontend/index.html` selon le projet — voir Project Structure plus haut).
 
 ## Future Real Integrations
 
@@ -252,7 +317,7 @@ Points de branchement déjà préparés dans le code, non connectés faute d'acc
 - **Port déjà utilisé** : chaque agent affiche un message clair et une commande pour changer de port via variable d'environnement (ex. `CRISISBOT_PORT`).
 - **Clé API manquante** : chaque agent continue de fonctionner en mode dégradé (règles simples ou message générique) plutôt que de planter.
 - **`UnicodeEncodeError` sous Windows** : `launch_all.py` force `PYTHONUTF8=1` dans l'environnement des sous-process pour éviter les crashs liés aux accents/emoji dans les logs redirigés.
-- **Webhook qui renvoie 401** : vérifie que le secret est bien envoyé comme paramètre d'URL (`?x_webhook_secret=...`), pas comme en-tête HTTP — un piège classique avec FastAPI.
+- **Webhook qui renvoie 401** : vérifie que le secret est bien envoyé comme paramètre d'URL (`?x_webhook_secret=...`), pas comme en-tête HTTP — particularité de l'implémentation FastAPI de ces routes.
 - **Modèle introuvable** (NetScope) : place `netscope_model.pkl` et `netscope_features.pkl` dans `models/` (voir `models/README.md`).
 
 ## Project Status
