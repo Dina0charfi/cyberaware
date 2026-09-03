@@ -160,6 +160,38 @@ python launch_all.py
 
 NetScope ne nécessite aucune clé pour fonctionner (ML pur) — Groq y est optionnel, uniquement pour l'explication en langage naturel.
 
+## Authentification (login/logout)
+
+Désactivée par défaut. Les 6 dashboards (les 5 agents + Serious Game) et la
+page d'accueil de `launch_all.py` peuvent être protégés par une connexion
+partagée — un seul compte démo, pas de vraie base d'utilisateurs (voir
+`auth.py`, dupliqué à l'identique dans chaque projet, même principe que
+`crisisbot_client.py`).
+
+Pour l'activer :
+
+```powershell
+copy .env.example .env
+# éditer .env : CYBERAWARE_AUTH_ENABLED=1
+python launch_all.py
+```
+
+Comment ça marche : `launch_all.py` charge ce `.env` racine et propage les
+variables `CYBERAWARE_*` à tous les sous-process (même mécanisme que
+`GROQ_API_KEY`/`HF_TOKEN`). La session est un cookie signé (HMAC-SHA256, sans
+état stocké côté serveur) posé sans attribut `Domain` — les cookies ne sont
+pas cloisonnés par port en HTTP, donc se connecter une fois sur `:8000`
+authentifie automatiquement les 6 autres ports. Se déconnecter via `/logout`
+sur n'importe lequel des 7 serveurs.
+
+Points d'entrée machine-à-machine (webhooks inter-agents, `/health`) restent
+toujours accessibles sans connexion — ils sont déjà protégés par leur propre
+secret partagé (ou volontairement ouverts, comme `/api/webhook/incident` de
+CrisisBot) et ne peuvent pas porter de cookie de session humaine. Le lien de
+tracking `/track/<token>` et le faux formulaire `/claim/<token>` du Serious
+Game restent aussi ouverts sans connexion : ce sont les pages vues par
+l'employé "piégé", pas par le formateur.
+
 ## Running the Project
 
 Tout lancer d'un coup, avec page d'accueil sur `http://localhost:8000` :

@@ -17,6 +17,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.parse
 import webbrowser
 from pathlib import Path
 
@@ -24,6 +25,41 @@ ROOT = Path(__file__).parent.resolve()
 HOME_PORT = 8000
 LOG_DIR = ROOT / "_launch_logs"
 LOG_DIR.mkdir(exist_ok=True)
+
+
+def _load_dotenv(path: Path) -> None:
+    """
+    Charge un .env (KEY=VALUE) dans os.environ, sans dépendance externe — même
+    fonction que celle de serious_game_project/server.py. Chargé AVANT
+    "import auth" ci-dessous, pour que CYBERAWARE_AUTH_ENABLED et les autres
+    variables d'auth soient lues correctement dès le chargement du module.
+    Une fois dans os.environ de CE process, elles sont automatiquement
+    propagées aux 6 sous-process lancés par start_app() (env = os.environ.copy()),
+    donc un seul .env à la racine suffit pour toute la plateforme.
+    """
+    if not path.is_file():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+_load_dotenv(ROOT / ".env")
+
+# Fichier de log des connexions UNIFIÉ : un seul chemin absolu, fixé ici avant
+# le lancement des 6 sous-process, pour que TOUS les agents (même lancés
+# depuis leur propre dossier de travail) écrivent dans le même fichier à la
+# racine du projet plutôt que dans 6 fichiers séparés. setdefault() pour ne
+# pas écraser une valeur explicitement définie dans .env.
+os.environ.setdefault("CYBERAWARE_LOGIN_LOG", str(ROOT / "login_history.jsonl"))
+
+import auth  # noqa: E402 — doit venir après _load_dotenv() pour lire les bonnes variables
 
 APPS = [
     {
@@ -343,6 +379,7 @@ def build_home_html():
 
     <div class="sidebar-footer">
       <button class="incident-btn">🚩 Signaler un incident</button>
+      {'<a href="/logout" style="display:block;text-align:center;margin-top:10px;font-size:12px;color:var(--sidebar-text-dim);text-decoration:none;">Se déconnecter</a>' if auth.AUTH_ENABLED else ''}
     </div>
   </div>
 
@@ -669,14 +706,74 @@ LESSON_VIDEOS = {
 
 class HomeHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path.startswith("/login"):
+            self._send_html(auth.render_login_page())
+            return
+
+        if self.path.startswith("/logout"):
+            self._logout_and_redirect()
+            return
+
+        # Tout le reste (page d'accueil + vidéos de formation) exige une
+        # session valide dès que CYBERAWARE_AUTH_ENABLED=1 — désactivé par
+        # défaut (voir auth.py), donc comportement inchangé si non activé.
+        if auth.AUTH_ENABLED and not self._is_authenticated():
+            self._redirect("/login")
+            return
+
         if self.path.startswith("/videos/"):
             self._serve_video(self.path.removeprefix("/videos/"))
             return
 
+        self._send_html(build_home_html())
+
+    def do_POST(self):
+        if self.path.startswith("/login"):
+            self._handle_login()
+            return
+        self.send_response(404)
+        self.end_headers()
+
+    def _is_authenticated(self) -> bool:
+        cookies = auth.parse_cookie_header(self.headers.get("Cookie"))
+        return auth.verify_session_cookie(cookies.get(auth.COOKIE_NAME)) is not None
+
+    def _handle_login(self) -> None:
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        raw_body = self.rfile.read(length).decode("utf-8") if length else ""
+        form = urllib.parse.parse_qs(raw_body)
+        email = (form.get("email") or [""])[0]
+        password = (form.get("password") or [""])[0]
+
+        if auth.check_credentials(email, password):
+            auth.record_login(email, source_agent="accueil")
+            cookie_value = auth.make_session_cookie(email)
+            self.send_response(302)
+            self.send_header("Location", "/")
+            # Pas d'attribut Domain -> cookie "host-only" pour localhost, donc
+            # envoyé par le navigateur à TOUS les ports (voir auth.py) : se
+            # connecter ici authentifie aussi les 6 dashboards des agents.
+            self.send_header("Set-Cookie", f"{auth.COOKIE_NAME}={cookie_value}; Path=/; HttpOnly; SameSite=Lax")
+            self.end_headers()
+        else:
+            self._send_html(auth.render_login_page(error=True))
+
+    def _logout_and_redirect(self) -> None:
+        self.send_response(302)
+        self.send_header("Location", "/login")
+        self.send_header("Set-Cookie", f"{auth.COOKIE_NAME}=; Path=/; Max-Age=0")
+        self.end_headers()
+
+    def _redirect(self, location: str) -> None:
+        self.send_response(302)
+        self.send_header("Location", location)
+        self.end_headers()
+
+    def _send_html(self, content: str) -> None:
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
-        self.wfile.write(build_home_html().encode("utf-8"))
+        self.wfile.write(content.encode("utf-8"))
 
     def _serve_video(self, filename):
         """

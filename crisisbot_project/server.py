@@ -29,10 +29,11 @@ import http.server
 import socketserver
 from pathlib import Path
 from datetime import datetime, timezone
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 from llm_comms import generate_comms_message, is_configured as llm_configured, FALLBACK_MESSAGE
 from notifications import send_slack_notification, is_slack_configured
+import auth
 
 PORT = int(os.environ.get("CRISISBOT_PORT", "8878"))
 BASE_DIR = Path(__file__).parent
@@ -195,6 +196,27 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+
+        if parsed.path.startswith("/login"):
+            self._send_html(auth.render_login_page())
+            return
+
+        if parsed.path.startswith("/logout"):
+            self.send_response(302)
+            self.send_header("Location", "/login")
+            self.send_header("Set-Cookie", f"{auth.COOKIE_NAME}=; Path=/; Max-Age=0")
+            self.end_headers()
+            return
+
+        # Protège le dashboard et /api/status — mais PAS /api/webhook/incident
+        # (voir do_POST) : ce point d'entrée est appelé par les 4 autres agents
+        # sans navigateur ni cookie, il doit rester joignable sans connexion.
+        if auth.AUTH_ENABLED and not self._is_authenticated():
+            self.send_response(302)
+            self.send_header("Location", "/login")
+            self.end_headers()
+            return
+
         if parsed.path == "/api/status":
             self._send_json(build_status())
             return
@@ -217,7 +239,29 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
 
+        if parsed.path.startswith("/login"):
+            length = int(self.headers.get("Content-Length", 0) or 0)
+            raw_body = self.rfile.read(length).decode("utf-8") if length else ""
+            form = parse_qs(raw_body)
+            email = (form.get("email") or [""])[0]
+            password = (form.get("password") or [""])[0]
+            if auth.check_credentials(email, password):
+                auth.record_login(email, source_agent="crisisbot")
+                cookie_value = auth.make_session_cookie(email)
+                self.send_response(302)
+                self.send_header("Location", "/")
+                self.send_header("Set-Cookie", f"{auth.COOKIE_NAME}={cookie_value}; Path=/; HttpOnly; SameSite=Lax")
+                self.end_headers()
+            else:
+                self._send_html(auth.render_login_page(error=True))
+            return
+
         if parsed.path == "/api/simulate":
+            # Protégé — déclenché depuis le bouton du dashboard, donc par un
+            # humain déjà connecté si l'auth est activée.
+            if auth.AUTH_ENABLED and not self._is_authenticated():
+                self._send_json({"error": "unauthorized"}, status=401)
+                return
             body = self._read_json_body()
             if body is None:
                 return
@@ -243,6 +287,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         self.send_response(404)
         self.end_headers()
+
+    def _is_authenticated(self) -> bool:
+        cookies = auth.parse_cookie_header(self.headers.get("Cookie"))
+        return auth.verify_session_cookie(cookies.get(auth.COOKIE_NAME)) is not None
+
+    def _send_html(self, content: str) -> None:
+        try:
+            body = content.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
+            pass
 
     def _send_json(self, data: dict, status: int = 200) -> None:
         try:

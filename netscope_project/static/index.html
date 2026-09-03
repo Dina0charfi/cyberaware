@@ -307,6 +307,7 @@
     </div>
     <div class="cwsb-footer">
       <button class="cwsb-incident">🚩 Signaler un incident</button>
+      <a href="/logout" style="display:block;text-align:center;margin-top:10px;font-size:12px;color:#7A8296;text-decoration:none;">Se déconnecter</a>
     </div>
   </div>
   <div class="cwsb-main">
@@ -334,6 +335,13 @@
       <i class="ti ti-search"></i><span id="analyze-btn-label">Chargement du trafic…</span>
     </button>
     <p id="api-error" style="display:none; color: var(--red-text); font-size: 13px; margin: 10px 0 0;"></p>
+  </div>
+
+  <div class="traffic-card" style="margin-top:16px;">
+    <div class="webhook-tag"><i class="ti ti-antenna"></i>Trafic en direct (téléphone → dns_proxy → tail_bridge)</div>
+    <div id="live-feed-rows">
+      <p style="color: var(--text-secondary); font-size: 13px;">En attente d'événements en direct…</p>
+    </div>
   </div>
 
   <div class="result-card" id="result-card">
@@ -428,6 +436,31 @@ function correlationText(priority, score) {
   return `Le score de risque humain de ce poste est faible (${score}/100) — l'alerte réseau reste à investiguer indépendamment du facteur humain.`;
 }
 
+// Affiche le panneau de détail (score, facteurs SHAP, profil humain, bouton
+// isoler) pour un domaine donné — utilisé à la fois par le tirage manuel
+// (/sample-traffic) et par un clic sur une ligne du trafic en direct
+// (/live-feed), pour ne pas dupliquer la logique d'affichage deux fois.
+function showSuspectDetail(suspect) {
+  currentSuspect = suspect;
+  const result = document.getElementById('result-card');
+  const resultText = document.getElementById('result-text');
+  const isolateBtn = document.getElementById('isolate-btn');
+  const isolateLabel = document.getElementById('isolate-btn-label');
+  const isolateConfirm = document.getElementById('isolate-confirm');
+
+  isolateBtn.disabled = false;
+  isolateLabel.textContent = 'Isoler le poste et lancer une investigation';
+  isolateConfirm.style.display = 'none';
+
+  resultText.innerHTML = `Le domaine <code>${suspect.domain}</code> a été résolu en direct via une vraie requête DNS puis analysé par le modèle NetScope (netscope_model.pkl).`;
+  renderScore(suspect);
+  renderFactors(suspect.factors);
+  renderProfile(suspect.user);
+  document.getElementById('correlation-text').textContent = correlationText(suspect.user.priority, suspect.user.human_risk_score);
+  result.classList.add('show');
+  result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 async function loadTraffic() {
   const btn = document.getElementById('analyze-btn');
   const label = document.getElementById('analyze-btn-label');
@@ -453,21 +486,10 @@ async function loadTraffic() {
     renderRows(data.results);
 
     const topSuspect = data.results.find(r => r.verdict === 'suspect');
-    currentSuspect = topSuspect || null;
-
-    isolateBtn.disabled = false;
-    isolateLabel.textContent = 'Isoler le poste et lancer une investigation';
-    isolateConfirm.style.display = 'none';
-
     if (topSuspect) {
-      resultText.innerHTML = `Le domaine <code>${topSuspect.domain}</code> a été analysé par le modèle NetScope (netscope_model.pkl) sur un échantillon réel du dataset.`;
-      renderScore(topSuspect);
-      renderFactors(topSuspect.factors);
-      renderProfile(topSuspect.user);
-      document.getElementById('correlation-text').textContent = correlationText(topSuspect.user.priority, topSuspect.user.human_risk_score);
-      result.classList.add('show');
-      result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      showSuspectDetail(topSuspect);
     } else {
+      currentSuspect = null;
       result.classList.remove('show');
     }
 
@@ -518,6 +540,51 @@ async function isolateHost() {
 document.getElementById('analyze-btn').addEventListener('click', loadTraffic);
 document.getElementById('isolate-btn').addEventListener('click', isolateHost);
 loadTraffic();
+
+// Trafic en direct (téléphone -> dns_proxy.py -> tail_bridge.py -> /webhook/traffic-event) :
+// contrairement au bloc au-dessus (chargé une fois sur clic), celui-ci
+// interroge /live-feed toutes les 2s pour afficher les domaines poussés en
+// temps réel pendant la démo, sans recharger la page.
+function renderLiveFeed(events) {
+  const container = document.getElementById('live-feed-rows');
+  if (!events || events.length === 0) {
+    container.innerHTML = '<p style="color: var(--text-secondary); font-size: 13px;">En attente d\'événements en direct…</p>';
+    return;
+  }
+  container.innerHTML = '';
+  events.forEach(r => {
+    const isSuspicious = r.verdict === 'suspect';
+    const row = document.createElement('div');
+    row.className = 'traffic-row' + (isSuspicious ? ' suspicious flagged' : '');
+    row.style.cursor = 'pointer';
+    row.title = 'Cliquer pour voir le détail (score, facteurs, profil du poste)';
+    row.innerHTML = `
+      <span class="domain">${isSuspicious ? '<i class="ti ti-alert-triangle"></i>' : ''}${r.domain} <span style="color: var(--text-secondary); font-size: 11px;">${r.at || ''}</span></span>
+      <span class="vol">${r.ml_score}%</span>
+    `;
+    // Clic sur une ligne = même panneau de détail que le tirage manuel
+    // (score, facteurs SHAP, profil de risque humain, bouton isoler) —
+    // l'événement stocké côté serveur contient déjà tout ça (voir
+    // LIVE_FEED_EVENTS dans api.py).
+    row.addEventListener('click', () => showSuspectDetail(r));
+    container.appendChild(row);
+  });
+}
+
+async function pollLiveFeed() {
+  try {
+    const res = await fetch(`${API_BASE}/live-feed`);
+    if (!res.ok) return;
+    const data = await res.json();
+    renderLiveFeed(data.events);
+  } catch (err) {
+    // Silencieux : un échec de sondage ne doit pas polluer l'UI, le prochain
+    // sondage (2s après) réessaiera tout seul.
+  }
+}
+
+pollLiveFeed();
+setInterval(pollLiveFeed, 2000);
 </script>
 </div>
 </div>

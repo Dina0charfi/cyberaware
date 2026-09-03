@@ -170,7 +170,15 @@ def start_attempt(
         raise ValueError(f"Vecteur inconnu : {vector_key}")
 
     token = uuid.uuid4().hex
-    track_url = f"{PUBLIC_URL}/track/{token}"
+    # Le vecteur "loterie" a un vrai faux formulaire (nom/téléphone/RIB/CIN) —
+    # le lien envoyé doit pointer vers /claim/<token> (server.py), qui affiche
+    # ce formulaire et ne résout la tentative qu'à la VRAIE soumission (POST).
+    # Tous les autres vecteurs pointent vers /track/<token>, qui résout la
+    # tentative dès l'ouverture du lien (un clic suffit).
+    if vector_key == "loterie":
+        track_url = f"{PUBLIC_URL}/claim/{token}"
+    else:
+        track_url = f"{PUBLIC_URL}/track/{token}"
 
     target = TARGETS_BY_ID[target_id]
     scenario = build_scenario_content(target, vector_key, track_url)

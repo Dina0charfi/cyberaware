@@ -36,6 +36,7 @@ from xon_api import check_email, get_analytics, RateLimitError
 from llm_summary import generate_summary, is_configured
 from crisisbot_client import notify_crisisbot
 from email_sources import get_monitored_emails
+import auth
 
 HIGH_RISK_LABELS = {"high", "critical"}
 
@@ -144,6 +145,24 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+
+        if parsed.path.startswith("/login"):
+            self._send_html(auth.render_login_page())
+            return
+
+        if parsed.path.startswith("/logout"):
+            self.send_response(302)
+            self.send_header("Location", "/login")
+            self.send_header("Set-Cookie", f"{auth.COOKIE_NAME}=; Path=/; Max-Age=0")
+            self.end_headers()
+            return
+
+        if auth.AUTH_ENABLED and not self._is_authenticated():
+            self.send_response(302)
+            self.send_header("Location", "/login")
+            self.end_headers()
+            return
+
         try:
             if parsed.path == "/api/emails":
                 self._send_json({"emails": load_emails()})
@@ -169,6 +188,42 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"status": "ok", "message": "Réinitialisation simulée (démo)"})
         else:
             super().do_GET()
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        if parsed.path.startswith("/login"):
+            length = int(self.headers.get("Content-Length", 0) or 0)
+            raw_body = self.rfile.read(length).decode("utf-8") if length else ""
+            form = parse_qs(raw_body)
+            email = (form.get("email") or [""])[0]
+            password = (form.get("password") or [""])[0]
+            if auth.check_credentials(email, password):
+                auth.record_login(email, source_agent="darkwatch")
+                cookie_value = auth.make_session_cookie(email)
+                self.send_response(302)
+                self.send_header("Location", "/")
+                self.send_header("Set-Cookie", f"{auth.COOKIE_NAME}={cookie_value}; Path=/; HttpOnly; SameSite=Lax")
+                self.end_headers()
+            else:
+                self._send_html(auth.render_login_page(error=True))
+            return
+        self.send_response(404)
+        self.end_headers()
+
+    def _is_authenticated(self) -> bool:
+        cookies = auth.parse_cookie_header(self.headers.get("Cookie"))
+        return auth.verify_session_cookie(cookies.get(auth.COOKIE_NAME)) is not None
+
+    def _send_html(self, content: str) -> None:
+        try:
+            body = content.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
+            pass
 
     def _send_json(self, data: dict) -> None:
         try:

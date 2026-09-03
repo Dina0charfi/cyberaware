@@ -41,7 +41,7 @@ import html as html_lib
 import http.server
 import socketserver
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 
 def _load_dotenv(path: Path) -> None:
@@ -75,6 +75,7 @@ import attempts
 import mailer
 import whatsapp
 import auto_simulate
+import auth
 
 PORT = int(os.environ.get("SERIOUSGAME_PORT", "8880"))  # 8880 : premier port libre après les 5 autres agents (8000, 8877-8879, 8001-8003)
 BASE_DIR = Path(__file__).parent
@@ -363,6 +364,30 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
 
+        if parsed.path.startswith("/login"):
+            self._send_html(auth.render_login_page())
+            return
+
+        if parsed.path.startswith("/logout"):
+            self.send_response(302)
+            self.send_header("Location", "/login")
+            self.send_header("Set-Cookie", f"{auth.COOKIE_NAME}=; Path=/; Max-Age=0")
+            self.end_headers()
+            return
+
+        # IMPORTANT : /track/<token> et /claim/<token> restent TOUJOURS
+        # accessibles sans connexion — ce sont les liens cliqués par les
+        # "victimes" fictives de la simulation (email/SMS/QR/WhatsApp reçu),
+        # pas des pages consultées par l'attaquant/formateur connecté. Seul le
+        # dashboard "attaquant" (choisir une cible/un vecteur, voir les stats)
+        # est protégé.
+        is_public_link = parsed.path.startswith("/track/") or parsed.path.startswith("/claim/")
+        if auth.AUTH_ENABLED and not is_public_link and not self._is_authenticated():
+            self.send_response(302)
+            self.send_header("Location", "/login")
+            self.end_headers()
+            return
+
         if parsed.path == "/api/targets":
             self._send_json({
                 "targets": TARGETS, "vectors": VECTORS,
@@ -445,6 +470,30 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
 
+        if parsed.path.startswith("/login"):
+            length = int(self.headers.get("Content-Length", 0) or 0)
+            raw_body = self.rfile.read(length).decode("utf-8") if length else ""
+            form = parse_qs(raw_body)
+            email = (form.get("email") or [""])[0]
+            password = (form.get("password") or [""])[0]
+            if auth.check_credentials(email, password):
+                auth.record_login(email, source_agent="serious_game")
+                cookie_value = auth.make_session_cookie(email)
+                self.send_response(302)
+                self.send_header("Location", "/")
+                self.send_header("Set-Cookie", f"{auth.COOKIE_NAME}={cookie_value}; Path=/; HttpOnly; SameSite=Lax")
+                self.end_headers()
+            else:
+                self._send_html(auth.render_login_page(error=True))
+            return
+
+        # /claim/<token> (soumission du faux formulaire) reste ouvert sans
+        # connexion, même logique que /track/<token> côté GET — c'est la
+        # "victime" qui soumet, pas l'attaquant/formateur.
+        if not parsed.path.startswith("/claim/") and auth.AUTH_ENABLED and not self._is_authenticated():
+            self._send_json({"error": "unauthorized"}, status=401)
+            return
+
         if parsed.path == "/api/attack":
             body = self._read_json_body()
             if body is None:
@@ -509,6 +558,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         self.send_response(404)
         self.end_headers()
+
+    def _is_authenticated(self) -> bool:
+        cookies = auth.parse_cookie_header(self.headers.get("Cookie"))
+        return auth.verify_session_cookie(cookies.get(auth.COOKIE_NAME)) is not None
 
     def _read_json_body(self):
         length = int(self.headers.get("Content-Length", 0) or 0)

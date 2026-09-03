@@ -11,12 +11,15 @@ Dashboard :
     http://127.0.0.1:8000/dashboard/
 """
 
+import urllib.parse
+
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from typing import Optional
 from pathlib import Path
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # IMPORTANT : charger le .env AVANT d'importer les modules qui lisent
 # les clés API au chargement (explain.py, agent_loop.py) — sinon ces
@@ -29,12 +32,59 @@ from src.llm.explain import generate_explanation
 from src.store import memory_store
 from src.agent.agent_loop import run_agent
 from src.crisisbot_client import notify_crisisbot
+from src import auth
 
 app = FastAPI(
     title="PhishHunter API",
     description="Agent IA de détection de phishing en temps réel",
     version="0.1.0",
 )
+
+# Chemins accessibles SANS connexion même quand CYBERAWARE_AUTH_ENABLED=1 :
+# /webhook/email est appelé par l'intégration Graph/Gmail ou la passerelle SMTP
+# (machine-à-machine, pas un humain avec un cookie de session). Désactivé par
+# défaut (voir auth.py) -> aucun changement de comportement tant que
+# CYBERAWARE_AUTH_ENABLED=1 n'est pas défini.
+_AUTH_EXEMPT_PATHS = {"/webhook/email", "/health", "/login", "/logout"}
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if not auth.AUTH_ENABLED or request.url.path in _AUTH_EXEMPT_PATHS:
+            return await call_next(request)
+        if auth.verify_session_cookie(request.cookies.get(auth.COOKIE_NAME)) is None:
+            return RedirectResponse("/login", status_code=302)
+        return await call_next(request)
+
+
+app.add_middleware(AuthMiddleware)
+
+
+@app.get("/login")
+def login_page():
+    return HTMLResponse(auth.render_login_page(brand_accent="4338CA"))
+
+
+@app.post("/login")
+async def login_submit(request: Request):
+    raw_body = (await request.body()).decode("utf-8")
+    form = urllib.parse.parse_qs(raw_body)
+    email = (form.get("email") or [""])[0]
+    password = (form.get("password") or [""])[0]
+    if auth.check_credentials(email, password):
+        auth.record_login(email, source_agent="phishhunter")
+        response = RedirectResponse("/dashboard/", status_code=302)
+        response.set_cookie(auth.COOKIE_NAME, auth.make_session_cookie(email), httponly=True, samesite="lax")
+        return response
+    return HTMLResponse(auth.render_login_page(error=True, brand_accent="4338CA"))
+
+
+@app.get("/logout")
+def logout():
+    response = RedirectResponse("/login", status_code=302)
+    response.delete_cookie(auth.COOKIE_NAME)
+    return response
+
 
 STATIC_DIR = Path(__file__).resolve().parents[2] / "static"
 app.mount("/dashboard", StaticFiles(directory=str(STATIC_DIR), html=True), name="dashboard")

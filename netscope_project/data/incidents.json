@@ -281,5 +281,33 @@
     "ml_score": 93.6,
     "isolated_at": "2026-08-18T19:08:03.022653+00:00",
     "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-19T08:41:11.300235+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-19T08:43:43.954940+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-02859.sample",
+    "user": "Karim L.",
+    "ml_score": 85.6,
+    "isolated_at": "2026-08-19T10:14:41.269593+00:00",
+    "source": "auto_scan"
+  },
+  {
+    "domain": "host-01289.sample",
+    "user": "Yassine B.",
+    "ml_score": 93.6,
+    "isolated_at": "2026-08-19T10:24:44.316474+00:00",
+    "source": "auto_scan"
   }
 ]

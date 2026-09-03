@@ -9,47 +9,31 @@ domaine jugé suspect avec un score élevé, agit automatiquement (journalise
 l'incident + notifie CrisisBot) — sans attendre qu'un analyste clique sur
 "Isoler". Même principe que l'agent autonome de DarkWatch (agent.py).
 
-Aujourd'hui la source est le même échantillon CSV que /sample-traffic
-(models/sample_traffic.csv) — le jour du branchement sur de vrais logs DNS,
-seule la fonction _pick_one_row() doit changer (lire le vrai flux au lieu
-du CSV), le reste de la boucle (score → décision → action) ne bouge pas.
+La source est maintenant live_feed.py (un vrai nom de domaine à chaque tour,
+mélange de domaines légitimes connus et de domaines générés façon DGA) +
+live_features.py, qui effectue une VRAIE résolution DNS (dnspython) pour
+calculer les features de réponse DNS — donc chaque tour de boucle fait une
+vraie requête réseau, plus une simple relecture de models/sample_traffic.csv.
 """
 
 import threading
 import time
-from pathlib import Path
-
-import pandas as pd
 
 from netscope_agent.actions import get_user_for_host, record_isolation
+from netscope_agent.live_feed import pick_one_live_domain
+from netscope_agent.live_features import extract_all_features_live
 
 SCAN_INTERVAL_SECONDS = 25
 AUTO_ACT_THRESHOLD = 80.0  # score ML au-delà duquel on agit sans attendre un humain
-
-BASE_DIR = Path(__file__).resolve().parents[2]
-SAMPLE_PATH = BASE_DIR / "models" / "sample_traffic.csv"
 
 # Domaines déjà traités automatiquement pendant cette exécution du process,
 # pour ne pas ré-isoler en boucle le même domaine à chaque tirage aléatoire.
 _already_acted: set[str] = set()
 
 
-def _pick_one_row():
-    if not SAMPLE_PATH.exists():
-        return None
-    df = pd.read_csv(SAMPLE_PATH)
-    if df.empty:
-        return None
-    return df.sample(n=1).iloc[0]
-
-
 def _scan_once(scorer) -> None:
-    row = _pick_one_row()
-    if row is None:
-        return
-
-    domain = row.get("domain", "unknown")
-    features_row = {f: row[f] for f in scorer.features}
+    domain = pick_one_live_domain()
+    features_row = extract_all_features_live(domain)
     result = scorer.score_domain(features_row)
 
     if result["ml_score"] >= AUTO_ACT_THRESHOLD and domain not in _already_acted:

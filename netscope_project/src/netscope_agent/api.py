@@ -7,17 +7,22 @@ Puis ouvrir : http://localhost:8000/
 import hmac
 import os
 import threading
+import time
+import urllib.parse
+from collections import deque
 from pathlib import Path
 from netscope_agent.scorer import NetScopeScorer
 from netscope_agent.actions import get_user_for_host, record_isolation
 from netscope_agent.auto_scan import run_auto_scan, AUTO_ACT_THRESHOLD, _already_acted
 from netscope_agent.live_features import extract_all_features_live
-import pandas as pd
-from fastapi import FastAPI, HTTPException
+from netscope_agent.live_feed import pick_live_domains
+from netscope_agent import auth
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
 
 app = FastAPI(title="NetScope Agent")
 scorer = NetScopeScorer()
@@ -28,6 +33,52 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Chemins accessibles SANS connexion même quand CYBERAWARE_AUTH_ENABLED=1 :
+# /webhook/traffic-event est appelé par event_simulator.py ou un vrai
+# firewall/proxy (protégé par son propre secret partagé, pas par un cookie de
+# session humaine) ; /health sert aux checks de démarrage. Désactivé par
+# défaut (auth.AUTH_ENABLED=False) -> aucun changement de comportement tant
+# que CYBERAWARE_AUTH_ENABLED=1 n'est pas défini (voir auth.py).
+_AUTH_EXEMPT_PATHS = {"/webhook/traffic-event", "/health", "/login", "/logout"}
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if not auth.AUTH_ENABLED or request.url.path in _AUTH_EXEMPT_PATHS:
+            return await call_next(request)
+        if auth.verify_session_cookie(request.cookies.get(auth.COOKIE_NAME)) is None:
+            return RedirectResponse("/login", status_code=302)
+        return await call_next(request)
+
+
+app.add_middleware(AuthMiddleware)
+
+
+@app.get("/login")
+def login_page():
+    return HTMLResponse(auth.render_login_page(brand_accent="0F6E56"))
+
+
+@app.post("/login")
+async def login_submit(request: Request):
+    raw_body = (await request.body()).decode("utf-8")
+    form = urllib.parse.parse_qs(raw_body)
+    email = (form.get("email") or [""])[0]
+    password = (form.get("password") or [""])[0]
+    if auth.check_credentials(email, password):
+        auth.record_login(email, source_agent="netscope")
+        response = RedirectResponse("/", status_code=302)
+        response.set_cookie(auth.COOKIE_NAME, auth.make_session_cookie(email), httponly=True, samesite="lax")
+        return response
+    return HTMLResponse(auth.render_login_page(error=True, brand_accent="0F6E56"))
+
+
+@app.get("/logout")
+def logout():
+    response = RedirectResponse("/login", status_code=302)
+    response.delete_cookie(auth.COOKIE_NAME)
+    return response
 
 STATIC_DIR = Path(__file__).resolve().parents[2] / "static"
 MODELS_DIR = Path(__file__).resolve().parents[2] / "models"
@@ -41,6 +92,17 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 WEBHOOK_SECRET = os.environ.get("NETSCOPE_WEBHOOK_SECRET", "change-moi-avant-toute-vraie-utilisation")
 
 _auto_scan_stop = threading.Event()
+
+# Historique en mémoire des derniers événements reçus via /webhook/traffic-event
+# (donc via tail_bridge.py + dns_proxy.py pendant la démo téléphone, ou via
+# event_simulator.py en mode --simulate) — /sample-traffic (clic manuel) ne
+# passe PAS par ce point d'entrée et n'y apparaît donc pas. deque(maxlen=30) :
+# les plus anciens sont automatiquement éjectés, pas besoin de le vider à la
+# main. Le dashboard sonde /live-feed toutes les quelques secondes pour
+# afficher ces événements au fur et à mesure, sans que le navigateur ait
+# besoin d'ouvrir une connexion permanente (websocket) — un simple polling
+# suffit pour une démo.
+LIVE_FEED_EVENTS: deque = deque(maxlen=30)
 
 
 @app.on_event("startup")
@@ -68,31 +130,29 @@ def serve_page():
 @app.get("/sample-traffic")
 def sample_traffic(n: int = 4):
     """
-    Charge l'échantillon réel exporté depuis le notebook (features + vrai label),
-    le score avec le modèle entraîné, et associe chaque hôte à un profil de
-    risque humain. Sert de flux de trafic pour la page.
+    Tire n VRAIS noms de domaine (live_feed.py : mélange de domaines légitimes
+    connus et de domaines générés façon DGA), effectue une VRAIE résolution
+    DNS pour chacun (live_features.py, dnspython — requête réseau réelle, pas
+    de valeurs pré-calculées), score le résultat avec le modèle entraîné, et
+    associe chaque domaine à un profil de risque humain. Sert de flux de
+    trafic "live" pour la page — remplace l'ancien flux basé sur
+    models/sample_traffic.csv (features déjà calculées, noms factices
+    "host-xxxxx.sample").
     """
-    if not SAMPLE_PATH.exists():
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                "sample_traffic.csv introuvable dans models/. "
-                "Exécute la cellule d'export du notebook (section 15) et "
-                "place le fichier dans models/."
-            ),
-        )
-
-    df = pd.read_csv(SAMPLE_PATH)
-    rows = df.sample(n=min(n, len(df))).to_dict(orient="records")
+    domains = pick_live_domains(n)
 
     results = []
-    for row in rows:
-        features_row = {f: row[f] for f in scorer.features}
-        score = scorer.score_domain(features_row)
-        domain = row.get("domain", "unknown")
+    for domain in domains:
+        features_row = extract_all_features_live(domain)
+        try:
+            score = scorer.score_domain(features_row)
+        except ValueError:
+            # Ne devrait pas arriver (extract_all_features_live couvre déjà
+            # toutes les features attendues par le modèle) — on ignore juste
+            # ce domaine plutôt que de faire échouer tout le tirage.
+            continue
         results.append({
             "domain": domain,
-            "true_label": row.get("true_label"),
             "user": get_user_for_host(domain),
             **score,
         })
@@ -197,7 +257,32 @@ def webhook_traffic_event(payload: TrafficWebhookEvent, x_webhook_secret: str = 
         )
         _already_acted.add(payload.domain)
 
+    # Ajouté EN PREMIER (appendleft) pour que /live-feed renvoie toujours les
+    # événements les plus récents en tête, prêts à être affichés tels quels.
+    # "user" (profil de risque humain) est inclus ici — pas seulement au
+    # moment de l'isolement — pour que le dashboard puisse afficher le même
+    # panneau de détail (score, facteurs, corrélation humaine) qu'un clic sur
+    # /sample-traffic, y compris pour un événement en dessous du seuil d'action.
+    LIVE_FEED_EVENTS.appendleft({
+        "domain": payload.domain,
+        "at": time.strftime("%H:%M:%S"),
+        "user": get_user_for_host(payload.domain),
+        **result,
+    })
+
     return {"domain": payload.domain, "features_computed_live": computed_live, **result}
+
+
+@app.get("/live-feed")
+def live_feed():
+    """
+    Les derniers événements reçus en direct via /webhook/traffic-event (donc,
+    pendant la démo, chaque domaine réellement visité sur le téléphone et
+    relayé par dns_proxy.py + tail_bridge.py). Le dashboard sonde cet
+    endpoint toutes les quelques secondes pour afficher le trafic au fur et
+    à mesure, sans recharger la page.
+    """
+    return {"events": list(LIVE_FEED_EVENTS)}
 
 
 @app.get("/health")
