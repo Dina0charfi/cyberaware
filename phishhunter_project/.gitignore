@@ -3,7 +3,4 @@ __pycache__/
 *.pyc
 .venv/
 venv/
-*.pkl
-*.model
-*.npy
 .DS_Store
