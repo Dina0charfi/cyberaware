@@ -1,0 +1,978 @@
+\documentclass[12pt,a4paper]{report}
+
+% ---------- Packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{microtype}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{xurl}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{caption}
+\usepackage{longtable}
+\usepackage{ragged2e}
+\usepackage{float}
+
+\setlength{\emergencystretch}{3em}
+
+\newcommand{\ProjectName}{CyberAware}
+
+\definecolor{espritblue}{RGB}{20,40,90}
+\definecolor{accentgray}{RGB}{90,90,90}
+
+\titleformat{\chapter}[display]
+  {\normalfont\Huge\bfseries\color{espritblue}}
+  {\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{espritblue}\raggedright}{\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{espritblue}\raggedright}{\thesubsection}{1em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{14pt}
+
+\newcommand{\TODO}[1]{\textcolor{red}{\textbf{[À COMPLÉTER : #1]}}}
+\newcommand{\code}[1]{\nolinkurl{#1}}
+
+\begin{document}
+\pagenumbering{gobble}
+
+% =====================================================
+% PAGE DE TITRE
+% =====================================================
+\begin{titlepage}
+\thispagestyle{empty}
+
+\begin{minipage}[t]{0.48\textwidth}
+    \raggedright
+    \includegraphics[height=2.2cm]{esprit.jpg}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+    \raggedleft
+    \includegraphics[height=2.2cm]{hydatis.png}
+\end{minipage}
+
+\vspace{0.8cm}
+
+\begin{center}
+
+{\large \textbf{ESPRIT}}\\[0.15cm]
+{\normalsize École Supérieure Privée d'Ingénierie et de Technologie}
+
+\vspace{1.8cm}
+
+{\Huge \textbf{Rapport de Stage d'Immersion en Entreprise}}
+
+\vspace{0.7cm}
+
+{\Large \textbf{CyberAware} }
+
+\vspace{0.25cm}
+
+{\large Une architecture intelligente de détection et de réponse aux cybermenaces }
+
+\vspace{1.5cm}
+
+{\large \textbf{Entreprise d'accueil :} Hydatis }
+
+\vspace{1.8cm}
+
+\begin{minipage}{0.78\textwidth}
+\large
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{@{}ll@{}}
+\textbf{Réalisé par :} & Dina Charfi \\
+\textbf{Encadré par :} & M. Imed Ammar \\
+\textbf{Période de stage :} & 6 juillet -- 21 août 2026 \\
+\textbf{Entreprise d'accueil :} & Hydatis \\
+\textbf{Adresse :} & Centre Urbain Nord, Immeuble Golden Tower, Bloc B, \\
+& Ariana, Tunisie
+\end{tabular}
+\end{minipage}
+
+\vfill
+
+{\large \textbf{Année universitaire : 2025 -- 2026} }
+
+\end{center}
+\end{titlepage}
+
+\clearpage
+\pagenumbering{roman}
+
+% =====================================================
+% LISTE DES ABRÉVIATIONS
+% =====================================================
+\chapter*{Liste des abréviations}
+\addcontentsline{toc}{chapter}{Liste des abréviations}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}p{10.5cm}@{}}
+\toprule
+\textbf{Sigle} & \textbf{Signification} \\
+\midrule
+ESN & Entreprise de Services du Numérique \\
+IA & Intelligence Artificielle \\
+ML & Machine Learning \\
+LLM & Large Language Model (grand modèle de langage) \\
+API & Application Programming Interface \\
+DNS & Domain Name System \\
+FQDN & Fully Qualified Domain Name \\
+TTL & Time To Live \\
+SHAP & SHapley Additive exPlanations \\
+JSON & JavaScript Object Notation \\
+HTTP(S) & HyperText Transfer Protocol (Secure) \\
+SIEM & Security Information and Event Management \\
+AD & Active Directory \\
+RSSI & Responsable de la Sécurité des Systèmes d'Information \\
+UI & User Interface (interface utilisateur) \\
+WHOIS & Protocole d'interrogation des informations d'enregistrement de domaine \\
+CV & Validation croisée (Cross-Validation) \\
+F1 & F1-score \\
+AUC & Area Under the Curve \\
+LMS & Learning Management System (plateforme de formation) \\
+\bottomrule
+\end{tabular}
+\caption{Liste des abréviations utilisées dans ce rapport}
+\end{table}
+
+\clearpage
+\pagenumbering{arabic}
+
+% =====================================================
+% INTRODUCTION GÉNÉRALE
+% =====================================================
+\chapter*{Introduction générale}
+\addcontentsline{toc}{chapter}{Introduction générale}
+\markboth{Introduction générale}{}
+
+La cybersécurité est aujourd'hui une préoccupation majeure pour les entreprises, surtout dans des secteurs comme la banque, où les données sensibles doivent être protégées. Les menaces sont de plus en plus nombreuses et variées, ce qui pousse les organisations à chercher des solutions capables de détecter, analyser et répondre aux incidents de sécurité.
+
+C'est dans ce cadre que j'ai effectué mon stage chez Hydatis, une entreprise de services numériques tunisienne, active notamment en intelligence artificielle, cloud computing, IoT et développement logiciel.
+
+Pendant ce stage, j'ai travaillé sur CyberAware, une architecture de cybersécurité composée de cinq agents spécialisés, complétée par un Serious Game de sensibilisation développé en parallèle. Chaque agent traite un problème différent (fuites de données, trafic DNS suspect, emails de phishing, menace interne, réponse à incident) avec l'approche technique la plus adaptée à ce problème.
+
+Ce rapport présente d'abord Hydatis et le contexte du stage, puis l'architecture de CyberAware et le travail réalisé sur chaque composant : objectifs, approche technique, fonctionnalités réellement implémentées, résultats disponibles, et limites. Il se termine par les difficultés rencontrées, les limites actuelles du projet, les perspectives d'évolution, et une conclusion générale.
+
+Tout au long de ce rapport, je fais une distinction claire entre ce que j'ai réellement implémenté et testé pendant le stage, et ce qui reste une idée, une piste explorée ou une perspective future. Cette distinction est volontaire : elle garantit que ce rapport reflète fidèlement le niveau réel d'avancement du projet, plutôt qu'une version enjolivée.
+
+% =====================================================
+\part{Contexte du stage}
+% =====================================================
+
+\chapter{Présentation de l'organisme d'accueil}
+\markboth{Chapitre 1 : Présentation de l'organisme d'accueil}{}
+
+\section{Introduction}
+
+Ce chapitre présente Hydatis, l'entreprise où j'ai fait mon stage, et le contexte du projet CyberAware.
+
+\section{Présentation générale de Hydatis}
+
+Hydatis est une entreprise de services numériques spécialisée dans la transformation digitale et l'ingénierie logicielle. Elle opère en Tunisie et en France, et fournit des services technologiques à des clients, notamment sur le marché européen.
+
+Ses activités couvrent l'assistance technique, le développement logiciel, l'intelligence artificielle et la data, le cloud et le DevOps, le conseil IT, ainsi que la sensibilisation à la cybersécurité.
+
+\section{Fiche d'identité de l'entreprise}
+
+Le tableau~\ref{tab:hydatis-fact-sheet} résume les principales informations sur Hydatis pertinentes pour ce stage.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4cm}>{\raggedright\arraybackslash}p{9cm}@{}}
+\toprule
+\textbf{Champ} & \textbf{Description} \\
+\midrule
+Entreprise & Hydatis \\
+Activité & Externalisation IT et ingénierie numérique \\
+Services principaux & Staff augmentation, développement logiciel, IA et data, cloud et DevOps, conseil IT, sensibilisation à la cybersécurité \\
+Bureau Tunisie & Centre Urbain Nord, Immeuble Golden Tower, Tunis \\
+Présence internationale & Tunisie et France \\
+Domaines technologiques principaux & Intelligence artificielle, data, cloud computing, ingénierie logicielle, IoT, cybersécurité \\
+Projet de stage & CyberAware \\
+\bottomrule
+\end{tabular}
+\caption{Fiche d'identité de Hydatis}
+\label{tab:hydatis-fact-sheet}
+\end{table}
+
+\section{Domaines d'expertise}
+
+Hydatis opère dans plusieurs domaines technologiques qui contribuent au développement, au déploiement et à l'intégration de solutions numériques.
+
+\subsection{Intelligence artificielle et données}
+
+Ce domaine regroupe le machine learning, l'ingénierie des données, l'analyse prédictive, la détection d'anomalies, la détection de fraude, l'IA générative et les solutions basées sur des LLM.
+
+\subsection{Développement logiciel}
+
+Conception, développement, intégration et maintenance de solutions logicielles adaptées aux besoins métier et techniques des clients, avec un rôle important dans la connexion entre modèles d'IA, systèmes de traitement de données, services cloud et applications utilisateur.
+
+\subsection{Cloud et DevOps}
+
+Ressources de calcul et de stockage évolutives, pratiques DevOps facilitant l'intégration et le déploiement continus des applications.
+
+\subsection{Internet des objets}
+
+Connexion d'appareils physiques capables de collecter, transmettre et traiter des données, intégrables à des plateformes logicielles et des modèles intelligents.
+
+\subsection{Cybersécurité et sensibilisation}
+
+Protection des systèmes d'information contre différents types de menaces, et volet sensibilisation : aider les utilisateurs et les organisations à mieux comprendre les cybermenaces et adopter de meilleures pratiques.
+
+\section{Contexte du stage et positionnement du projet CyberAware}
+
+Le stage s'est déroulé au sein de l'environnement technologique de Hydatis, autour du projet CyberAware, une architecture de cybersécurité orientée intelligence artificielle, conçue autour de plusieurs agents spécialisés couvrant différents cas d'usage de cybersécurité. Le projet combine des concepts de machine learning, de traitement de données, de LLM, d'agents intelligents et d'ingénierie logicielle, et se rattache directement à plusieurs domaines d'expertise de Hydatis présentés ci-dessus.
+
+\section{Conclusion}
+
+Ce chapitre a présenté Hydatis et son positionnement technologique. Le chapitre suivant présente le projet CyberAware en détail : son architecture, ses objectifs et les agents qui le composent.
+
+% =====================================================
+\part{Étude et conception de CyberAware}
+% =====================================================
+
+\chapter{Présentation et architecture de CyberAware}
+\markboth{Chapitre 2 : Présentation et architecture de CyberAware}{}
+
+\section{Introduction}
+
+Ce chapitre présente le projet CyberAware : ses objectifs, son architecture, et comment les agents fonctionnent ensemble. Chaque agent est ensuite détaillé dans son propre chapitre.
+
+\section{Objectifs du projet}
+
+CyberAware simule un environnement de cybersécurité bancaire dans lequel plusieurs types d'événements peuvent survenir : emails suspects, trafic DNS anormal, comptes exposés dans des fuites de données, connexions inhabituelles. Ces événements sont de nature différente et ne peuvent pas être analysés efficacement par un seul mécanisme générique. C'est ce qui justifie une architecture multi-agents, où chaque agent traite un type de menace avec l'approche technique adaptée.
+
+Les objectifs concrets poursuivis dans le projet sont :
+
+\begin{itemize}[nosep]
+\item détecter différentes catégories de menaces en utilisant, pour chacune, le mécanisme le plus adapté ;
+\item appliquer du machine learning (supervisé ou non supervisé) uniquement quand c'est pertinent pour le problème considéré ;
+\item utiliser une logique déterministe ou une source d'information externe quand un modèle entraîné n'apporte rien (c'est le cas de DarkWatch et CrisisBot, qui n'utilisent aucun ML) ;
+\item calculer un score de risque pour chaque événement analysé ;
+\item escalader automatiquement les incidents significatifs vers un composant central de réponse (CrisisBot) ;
+\item fournir à chaque agent un tableau de bord permettant de visualiser ses résultats et décisions.
+\end{itemize}
+
+\section{Architecture générale}
+
+CyberAware suit une architecture de type microservices faiblement couplés. Chaque agent (DarkWatch, NetScope, PhishHunter, Sentinel, CrisisBot) tourne comme un service web indépendant, avec son propre serveur, son propre port et son propre dashboard. Ce choix permet à chaque agent de rester concentré sur sa tâche sans dépendre de l'implémentation interne des autres.
+
+La communication entre les agents se fait uniquement par webhooks HTTP. Il n'existe pas de composant partagé au sens d'une bibliothèque commune importée par tous les projets. Le seul élément dupliqué entre les projets est un petit client HTTP (\texttt{crisisbot\_client.py}), recopié à l'identique dans chaque agent, dont le rôle est d'envoyer un incident à CrisisBot.
+
+\section{Pipeline de traitement commun aux agents}
+
+Malgré des implémentations techniques différentes, les quatre agents de détection (DarkWatch, NetScope, PhishHunter, Sentinel) suivent la même logique de haut niveau :
+
+\begin{enumerate}[nosep]
+\item \textbf{Perception} : l'agent reçoit un événement (venant d'un système externe, d'un autre composant, ou du simulateur de démonstration).
+\item \textbf{Analyse et scoring} : l'événement est traité avec le mécanisme propre à l'agent, un modèle ML, une règle déterministe, ou un appel à une source externe.
+\item \textbf{Décision} : le score ou le résultat obtenu est comparé à un seuil ou une règle prédéfinie.
+\item \textbf{Action} : l'agent exécute l'action correspondante.
+\item \textbf{Escalade} : si les conditions sont réunies, l'incident est transmis automatiquement à CrisisBot.
+\item \textbf{Journalisation} : l'événement, le résultat de l'analyse et l'action effectuée sont enregistrés.
+\end{enumerate}
+
+CrisisBot ne suit pas ce même schéma : il ne calcule aucun score, il orchestre une réponse standardisée à partir d'une décision déjà prise par un des quatre autres agents.
+
+\section{Mécanismes de communication et de sécurité inter-agents}
+
+Les endpoints webhook de NetScope et Sentinel sont protégés par un secret partagé, comparé côté serveur avec \texttt{hmac.compare\_digest} (comparaison en temps constant, plutôt qu'une simple égalité de chaînes qui pourrait, en théorie, être exploitée par une attaque temporelle).
+
+Les quatre agents de détection peuvent appeler automatiquement CrisisBot via \texttt{/api/webhook/incident} dès qu'un seuil de risque est dépassé, sans intervention humaine.
+
+Il faut cependant noter une limite réelle et assumée : ni cet appel vers CrisisBot, ni les webhooks de DarkWatch et PhishHunter, ne sont authentifiés. L'appel est un simple \texttt{POST} en mode best-effort, avec un timeout court (3 secondes). Si CrisisBot est injoignable, l'exception est capturée, un message est affiché en console, et l'agent appelant continue de fonctionner normalement, sans nouvelle tentative.
+
+\section{Vue d'ensemble des agents spécialisés}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}p{5.3cm}>{\raggedright\arraybackslash}p{5.3cm}@{}}
+\toprule
+\textbf{Agent} & \textbf{Menace ciblée} & \textbf{Approche technique} \\
+\midrule
+DarkWatch & Fuites de données / comptes compromis & Pas de ML, appel API en temps réel \\
+NetScope & Trafic DNS suspect / exfiltration de données & ML supervisé (LightGBM) avec explicabilité SHAP \\
+PhishHunter & Emails de phishing & ML supervisé (régression logistique + Word2Vec), mode agent LLM optionnel \\
+Sentinel & Comportement anormal / menace interne & ML non supervisé (Isolation Forest) \\
+CrisisBot & Coordination de la réponse à incident & Pas de ML, orchestration déterministe \\
+\bottomrule
+\end{tabular}
+\caption{Vue d'ensemble des cinq agents spécialisés de CyberAware}
+\end{table}
+
+\section{Conclusion}
+
+Ce chapitre a présenté l'architecture générale de CyberAware : une architecture microservices où chaque agent traite un type de menace avec l'approche la plus adaptée, reliée par un pipeline commun et des mécanismes de communication simples. Les chapitres suivants détaillent chaque agent individuellement, puis le Serious Game développé en parallèle.
+
+% =====================================================
+\part{Développement des agents}
+% =====================================================
+
+\chapter{DarkWatch}
+\markboth{Chapitre 3 : DarkWatch}{}
+
+\section{Introduction}
+
+DarkWatch est l'agent qui surveille si des comptes email apparaissent dans des fuites de données publiques. Il n'utilise aucun modèle entraîné. Sa valeur vient d'ailleurs : il automatise une vérification qu'un analyste ferait autrement à la main, et il reste relié au reste du système.
+
+\section{Problématique}
+
+Savoir si une adresse email a été exposée dans une fuite de données connue est un problème de recherche dans une base déjà existante, pas un problème de prédiction. Il n'y a donc rien à apprendre ou à généraliser à partir de données d'entraînement : la bonne approche est d'interroger une source externe qui maintient déjà ce type d'information à jour.
+
+\section{Rôle dans l'architecture CyberAware}
+
+DarkWatch tourne comme un service indépendant, avec son propre serveur, son propre port et son propre dashboard. Il se distingue des autres agents détaillés dans ce rapport par le fait qu'il n'expose aucun endpoint webhook entrant : il n'agit qu'en tant qu'appelant, d'abord vers XposedOrNot pour la vérification, puis vers CrisisBot quand une fuite à risque élevé est confirmée.
+
+\section{Approche adoptée}
+
+DarkWatch interroge en temps réel l'API publique et gratuite \textbf{XposedOrNot}. L'alternative la plus connue, Have I Been Pwned, a été écartée parce que l'accès complet à son API est payant. XposedOrNot offre un service équivalent sans cette contrainte, avec la réserve qu'aucune base de fuites publiques ne peut garantir qu'elle indexe l'intégralité des fuites existantes. Deux endpoints sont utilisés : \texttt{check-email} (l'adresse apparaît-elle dans une fuite, et laquelle) et \texttt{breach-analytics} (un label de risque et un score sur 10, tous deux calculés par XposedOrNot, pas par DarkWatch).
+
+Le code implémente deux niveaux d'automatisation réellement différents :
+
+\begin{itemize}[nosep]
+\item \textbf{Mode intégré} (\texttt{server.py}, celui effectivement lancé par la démo du projet) : entièrement déterministe. Une fuite avec un label de risque \emph{high} ou \emph{critical} déclenche automatiquement un appel à CrisisBot. Un LLM (Groq) peut, en option, transformer les données brutes de la fuite en résumé en langage naturel pour un analyste. Cette étape de rédaction n'a aucune influence sur la décision d'alerter ou non.
+\item \textbf{Mode autonome} (\texttt{agent.py}, un script séparé, non lancé par la démo) : ici, le LLM décide réellement. À partir des données de la fuite, il doit choisir exactement une action parmi quatre prédéfinies (\texttt{reset\_password}, \texttt{notify\_only}, \texttt{escalate\_ciso}, \texttt{ignore\_false\_positive}), via une réponse JSON structurée. Si la réponse est absente ou invalide, une règle déterministe basée sur le label de risque prend le relais, ce qui garantit que l'agent aboutit toujours à une décision, même sans LLM configuré.
+\end{itemize}
+
+\section{Fonctionnement}
+
+Dans le mode intégré : la liste des emails surveillés est lue $\rightarrow$ chaque adresse est interrogée via \texttt{check-email} $\rightarrow$ le label et le score de risque sont récupérés $\rightarrow$ si le label est \emph{high} ou \emph{critical}, un incident est envoyé à CrisisBot ; sinon, le résultat reste affiché sur le dashboard sans action automatique.
+
+Dans le mode autonome : le même lookup XposedOrNot est effectué, mais le résultat est ensuite transmis à un LLM qui raisonne sur les données et choisit une des quatre actions listées ci-dessus ; les actions \texttt{reset\_password} et \texttt{escalate\_ciso} notifient en plus CrisisBot.
+
+\section{Mémoire et suivi}
+
+DarkWatch n'utilise pas de mémoire apprise, seulement un cache d'état, et le mécanisme change selon le point d'entrée :
+
+\begin{itemize}[nosep]
+\item le script en ligne de commande et le mode autonome persistent un fichier JSON (\texttt{darkwatch\_state.json}) entre les exécutions, pour ne signaler que les fuites nouvellement détectées ;
+\item la boucle d'auto-scan du dashboard (active uniquement en mode simulation) garde un ensemble en mémoire pour éviter les notifications répétées pendant une même session, mais cet ensemble, contrairement au fichier JSON, est perdu au redémarrage ;
+\item un scan manuel déclenché depuis le dashboard ne garde aucune mémoire et réévalue chaque compte à chaque fois.
+\end{itemize}
+
+\section{Intégration avec CrisisBot}
+
+Sur une fuite à risque élevé, DarkWatch envoie un simple \texttt{POST} vers \code{/api/webhook/incident} de CrisisBot, avec un timeout de 3 secondes et \textbf{aucune authentification} d'aucun côté de l'appel. C'est une limite à signaler explicitement plutôt qu'à supposer couverte par un mécanisme de sécurité commun à tous les agents. L'appel est volontairement best-effort : si CrisisBot est injoignable, l'exception est capturée, un message est affiché en console, et DarkWatch continue de fonctionner normalement, sans nouvelle tentative.
+
+\section{De la donnée à l'affichage}
+
+Sur le dashboard, chaque email surveillé est listé avec un statut qui démarre à "En attente...". Après un scan, chaque ligne indique soit "Aucune fuite trouvée" soit "Fuite détectée" (en rouge). Si une fuite est détectée, un panneau d'alerte apparaît avec le nom de la ou des fuites, le label et le score de risque calculés, le résumé généré par le LLM (clairement identifié comme tel), et un bouton pour déclencher une action de reset de mot de passe, simulée dans ce contexte de démonstration. Une barre de recherche permet aussi de vérifier une adresse email unique à la demande, avec le même mécanisme de vérification.
+
+\section{Limites}
+
+DarkWatch dépend entièrement d'une seule API externe ; les quotas du niveau gratuit cités dans le code et le README du projet (2 requêtes/seconde, 25/heure, 100/jour par IP) sont ceux documentés en interne, pas une politique XposedOrNot re-vérifiée de façon indépendante au moment de la rédaction. La couverture se limite aux fuites déjà indexées publiquement par XposedOrNot. Il n'y a pas de connexion réelle à un Active Directory ou à Microsoft Graph (seulement un squelette de code non implémenté). Ni l'appel à CrisisBot ni le dashboard lui-même ne sont authentifiés. Le stockage repose sur des fichiers locaux, sans base de données. L'action de reset de mot de passe est entièrement simulée.
+
+\section{Conclusion}
+
+DarkWatch illustre qu'un agent utile en cybersécurité n'a pas toujours besoin d'un modèle entraîné : sa valeur vient de l'automatisation d'une vérification répétitive et de son intégration avec CrisisBot. Ses deux niveaux d'automatisation (un mode intégré entièrement auditable, et un mode autonome où le LLM décide réellement parmi un ensemble fermé d'actions) en font, avec PhishHunter, l'un des deux seuls endroits du projet où un LLM est volontairement autorisé à décider plutôt qu'à seulement expliquer. Le chapitre suivant présente NetScope, premier agent du projet reposant sur un modèle réellement entraîné.
+
+\chapter{NetScope}
+\markboth{Chapitre 4 : NetScope}{}
+
+\section{Introduction}
+
+NetScope est l'agent qui repère, dans le trafic DNS, ce qui ressemble statistiquement à de l'exfiltration de données. C'est l'agent le plus abouti du projet côté machine learning classique : un vrai modèle entraîné, comparé à plusieurs alternatives, affiné, et servi en production avec de l'explicabilité réelle. Pendant le stage, j'ai aussi ajouté une vraie résolution DNS et une démonstration avec un téléphone physique.
+
+\section{Problématique}
+
+Le tunneling DNS consiste à encoder des données (identifiants, fichiers, informations volées) dans le nom de domaine d'une requête DNS, envoyée à un serveur contrôlé par l'attaquant. Le trafic DNS étant volumineux et rarement inspecté en profondeur, ce type d'attaque est difficile à repérer manuellement, et une liste noire statique ne suffit pas puisque le nom de domaine utilisé peut n'avoir jamais été vu auparavant.
+
+\section{Rôle dans l'architecture CyberAware}
+
+NetScope est un service FastAPI indépendant. Trois points d'entrée alimentent le même pipeline de scoring : \texttt{POST /analyze} (scoring à la demande, features déjà fournies, utilisé par le dashboard), \texttt{POST /webhook/traffic-event} (endpoint push pour un pare-feu ou proxy externe, protégé par un secret partagé vérifié avec \texttt{hmac.compare\_digest}), et \texttt{auto\_scan.py} (boucle autonome qui échantillonne un domaine toutes les ~25 secondes et peut agir seule si le score dépasse un seuil).
+
+\section{Dataset et préparation des données}
+
+Le modèle a été entraîné sur le dataset public \textbf{CIC-Bell-DNS-Exfiltration 2021} (\texttt{dhoogla/cicbelldnsexf2021}, Kaggle), construit spécifiquement pour la détection d'exfiltration DNS. Le fichier brut contient 102 762 requêtes DNS décrites par 44 colonnes, avec une colonne d'étiquette d'origine (\texttt{GlobalClass}, valeurs "Light Benign" / "Light Attack"), réduite dans le notebook à une cible binaire \texttt{target}. Sur les 102 762 lignes, la répartition réelle est de 60 088 Benign contre 42 674 Attack (58,5\% / 41,5\%), un déséquilibre modéré, pas extrême.
+
+Le notebook d'entraînement a été exécuté sur Kaggle et n'est pas présent dans ce dépôt ; seuls les fichiers exportés (\texttt{netscope\_model.pkl}, \texttt{netscope\_features.pkl}) sont disponibles localement, ce qui fait de cette section un compte-rendu du contenu du notebook plutôt qu'une ré-exécution vérifiée pour ce rapport.
+
+\section{Features DNS retenues}
+
+Sur les 44 colonnes brutes, 16 ont été retenues pour l'entraînement : des statistiques numériques décrivant le nom de domaine et sa réponse DNS (entropie, longueur, nombre de sous-domaines, ratio de chiffres/caractères spéciaux, statistiques de TTL...), plutôt que la chaîne brute du domaine, inutilisable directement par ce type de modèle.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}p{3.2cm}p{9.8cm}@{}}
+\toprule
+\textbf{Feature} & \textbf{Ce qu'elle mesure} \\
+\midrule
+\texttt{entropy}, \texttt{rr\_name\_entropy} & Entropie de Shannon du nom de domaine \\
+\texttt{len}, \texttt{rr\_name\_length}, \texttt{FQDN\_count} & Longueur et structure du nom \\
+\texttt{subdomain\_length}, \texttt{subdomain} & Présence et longueur du sous-domaine \\
+\texttt{labels}, \texttt{labels\_max}, \texttt{labels\_average} & Nombre et longueur des segments du nom \\
+\texttt{numeric}, \texttt{special} & Part de chiffres / caractères spéciaux \\
+\texttt{rr\_count}, \texttt{a\_records} & Volume de la réponse DNS \\
+\texttt{ttl\_mean}, \texttt{ttl\_variance} & Statistiques du TTL des enregistrements \\
+\bottomrule
+\end{tabular}
+\caption{Les 16 features utilisées par NetScope pour scorer une requête DNS.}
+\end{table}
+
+En production, un pare-feu ou un proxy ne fournit jamais que le nom de domaine. Il ne calcule pas d'entropie de Shannon. \texttt{live\_features.py} comble cet écart : 10 des 16 features sont calculables depuis le nom seul, les 6 restantes nécessitent une vraie résolution DNS (avec repli à 0, sans lever d'erreur, si \texttt{dnspython} n'est pas disponible ou si la résolution échoue).
+
+En production, le pipeline s'appuie sur cette même résolution DNS réelle pour la démonstration bout-en-bout avec un téléphone physique (voir Section~\ref{sec:netscope-live}).
+
+\section{Feature Engineering et sélection}
+
+Le notebook ne se contente pas de fixer les 16 features et de s'arrêter là. Il les classe par importance (via un Random Forest), puis recompare les performances en ne gardant que les 8 plus importantes. La perte est marginale : F1 = 0,8309 avec les 16 features contre F1 = 0,8301 avec seulement 8. Le modèle finalement exporté garde toutefois les 16 features, ce qui est aussi ce que \texttt{live\_features.py} reconstruit en production.
+
+\section{Modèle de machine learning}
+
+Cinq modèles ont été comparés par validation croisée stratifiée à 5 plis, sur F1 et ROC-AUC :
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Modèle} & \textbf{F1 moyen} & \textbf{ROC-AUC moyen} \\
+\midrule
+LightGBM & 0,8312 & 0,8704 \\
+XGBoost & 0,8309 & 0,8707 \\
+Random Forest & 0,8309 & 0,8698 \\
+HistGradientBoosting & 0,8308 & 0,8707 \\
+Régression logistique & 0,8221 & 0,8685 \\
+\bottomrule
+\end{tabular}
+\caption{Comparaison des modèles par validation croisée à 5 plis.}
+\end{table}
+
+Les quatre modèles à base d'arbres sont pratiquement indiscernables ; seule la régression logistique reste clairement en retrait. LightGBM a été retenu. L'écart avec les autres modèles d'arbres est marginal, le choix tient surtout à la vitesse d'entraînement/inférence et à la compatibilité avec \texttt{shap.TreeExplainer} en production. Un réglage Optuna (recherche bayésienne, 50 essais) a ensuite affiné les hyperparamètres, portant le F1 validé croisé à 0,8313.
+
+Sur le jeu de test final :
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Classe} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\
+\midrule
+0 (Benign) & 1,00 & 0,72 & 0,84 \\
+1 (Attack) & 0,72 & 1,00 & 0,83 \\
+\bottomrule
+\end{tabular}
+\caption{Rapport de classification du modèle LightGBM final sur le jeu de test.}
+\end{table}
+
+Le modèle ne rate aucune attaque sur ce jeu de test (recall = 1,00) au prix d'un vrai taux de faux positifs (precision = 0,72 sur la classe Attaque, donc environ 28\% du trafic normal marqué à tort comme suspect). Dans un contexte sécurité, ce compromis est généralement acceptable : rater une exfiltration réelle coûte plus cher qu'une fausse alerte. Mais ce n'est pas un objectif explicitement formulé dans le notebook, plutôt une lecture faite après coup.
+
+\section{Scoring et décision en production}
+
+\texttt{NetScopeScorer} charge le modèle et la liste de features une seule fois au démarrage du service. \texttt{score\_domain()} calcule \texttt{ml\_score = round(proba * 100, 1)}, la seule valeur numérique dont dépendent toutes les étapes suivantes (seuils, SHAP, LLM, dashboard).
+
+Deux seuils distincts pilotent le comportement, définis dans le code de production et non dans le notebook : \textbf{50} (verdict affiché "suspect" vs "normal") et \textbf{80} (\texttt{AUTO\_ACT\_THRESHOLD}, isolement automatique du poste sans intervention humaine). Le score composite à trois termes exploré dans le notebook (0,7×ML + 0,2×trafic + 0,1×profil humain) n'existe pas dans le service réel. Seul \texttt{ml\_score} est utilisé partout.
+
+\section{Explicabilité (SHAP)}
+
+SHAP n'apparaît pas dans le notebook d'entraînement mais est bien utilisé par le service en production : un \texttt{shap.TreeExplainer} est construit au démarrage, et chaque requête analysée renvoie les 4 facteurs principaux ayant influencé le score, avec leur direction (augmente/diminue le risque), affichés sur le dashboard sous "Main factors".
+
+\section{Rôle du LLM}
+
+Un LLM (Groq, \texttt{llama-3.1-8b-instant}) est appelé uniquement pour rédiger une explication en langage naturel. Le prompt système lui interdit explicitement de reclasser l'alerte, cette décision étant déjà prise en amont. Sans clé API configurée, ou en cas d'échec, un repli par template reconstruit une explication à partir des mêmes données réelles (facteurs SHAP, score, profil de risque), sans jamais inventer de contenu.
+
+\section{Résolution DNS réelle et démonstration avec un téléphone}
+\label{sec:netscope-live}
+
+Un travail concret réalisé pendant le stage a remplacé l'échantillon statique de départ par une résolution DNS réelle : chaque domaine du flux affiché est désormais résolu en direct via \texttt{dnspython}, et le flux inclut systématiquement, quand la source est joignable, au moins un domaine malveillant réellement actif à ce moment-là, tiré du flux public de menaces URLhaus (abuse.ch), mélangé à des domaines légitimes et à des domaines générés type DGA pour la démonstration.
+
+Pour aller plus loin, une démonstration bout-en-bout a été construite avec un téléphone physique : un proxy DNS local (\texttt{dns\_proxy.py}) relaie de façon transparente le trafic DNS du téléphone (sans jamais modifier les paquets) tout en journalisant le domaine demandé, et un script de suivi de log (\texttt{tail\_bridge.py}) transmet chaque nouveau domaine au webhook \texttt{/webhook/traffic-event} en quasi temps réel. Le dashboard affiche ces événements dans un panneau dédié ("Trafic en direct"), avec un rafraîchissement toutes les 2 secondes.
+
+\section{Mémoire et suivi}
+
+NetScope ne conserve pas de mémoire apprise, seulement un cache léger en mémoire process : \texttt{auto\_scan.py} garde un ensemble des domaines déjà isolés pendant l'exécution en cours, partagé avec le webhook push pour éviter une double isolation. Cet ensemble est perdu au redémarrage. Le scoring à la demande (\texttt{/analyze}) ne conserve aucune mémoire et ne déclenche jamais d'isolement automatique, quel que soit le score.
+
+\section{Intégration avec CrisisBot}
+
+Une fonction partagée (\texttt{actions.record\_isolation}) journalise l'incident (\texttt{data/incidents.json}) et notifie CrisisBot, que le déclencheur soit un clic manuel, la boucle autonome ou le webhook push. L'incident n'est donc journalisé qu'une seule fois. La notification suit le même schéma best-effort que les autres agents : \texttt{POST} simple, timeout 3s, aucune authentification.
+
+\section{De la donnée à l'affichage}
+
+Le dashboard NetScope présente une carte "trafic" listant des domaines résolus en direct avec leur score en pourcentage (lignes suspectes surlignées en rouge), et un panneau "Trafic en direct" alimenté par le webhook, avec sondage toutes les 2 secondes. Chaque ligne est cliquable et ouvre le détail complet : score, niveau de risque, facteurs SHAP, profil de l'utilisateur corrélé. Un bouton "Isoler le poste" déclenche l'action (journalisée, jamais réellement exécutée sur un système).
+
+\section{Limites}
+
+Le modèle ne reconnaît que ce qui ressemble statistiquement aux attaques déjà présentes dans CIC-Bell-DNSExF2021. Une technique d'exfiltration DNS réellement nouvelle pourrait passer inaperçue. \texttt{ttl\_variance} reste toujours à 0 sur le chemin de résolution en direct, puisqu'une seule résolution DNS ne peut fournir qu'une seule valeur de TTL, une limite technique documentée dans le code lui-même. Ni le dashboard ni l'appel vers CrisisBot ne sont authentifiés. La démonstration téléphone est un montage local de démonstration (un seul poste), pas un tap réseau prêt pour la production.
+
+\section{Conclusion}
+
+NetScope associe un pipeline de machine learning classique mais soigné (cinq modèles comparés, réglage bayésien, vérification contre une règle naïve) à une couche de production qui comble l'écart entre un dataset de recherche et un vrai nom de domaine, avec une explicabilité SHAP réelle et un LLM qui rédige sans jamais décider. Le travail réalisé pendant le stage a ensuite prolongé cette base avec une résolution DNS réelle et une démonstration fonctionnelle avec un téléphone physique. Le chapitre suivant présente PhishHunter, le second agent du projet construit autour d'un modèle entraîné.
+
+\chapter{PhishHunter}
+\markboth{Chapitre 5 : PhishHunter}{}
+
+\section{Introduction}
+
+PhishHunter est l'agent qui classe un email entrant en Safe, Suspicious ou Phishing. C'est, avec DarkWatch, l'un des deux seuls agents du projet où un LLM est volontairement autorisé à décider d'une action finale plutôt qu'à seulement l'expliquer.
+
+\section{Problématique}
+
+Un email de phishing se reconnaît à deux types de signaux : ce qu'il dit (langage urgent, menace de suspension de compte, formule de politesse générique) et d'où il vient réellement (un domaine qui ressemble presque, mais pas tout à fait, à un domaine légitime). Combiner les deux signaux permet de détecter davantage de tentatives que de se fier à un seul.
+
+\section{Rôle dans l'architecture CyberAware}
+
+PhishHunter est un service FastAPI indépendant, avec un webhook d'entrée \texttt{/webhook/email}. Deux chemins de décision coexistent dans le code : un chemin déterministe (score au-delà d'un seuil $\rightarrow$ CrisisBot directement) et un mode agent optionnel, plus riche, pour la démonstration du raisonnement LLM outillé.
+
+\section{Dataset}
+
+Le modèle final a été entraîné, selon la documentation du projet lui-même (\texttt{phishhunter\_project/README.md}), sur un corpus de \textbf{163 700 emails provenant de 7 sources combinées}. Une limite de traçabilité doit être signalée ici plutôt que comblée : le notebook d'entraînement Kaggle correspondant n'a pas pu être localisé avec certitude parmi les fichiers accessibles pendant ce stage, ce qui empêche de préciser la composition exacte des 7 sources ou de donner des métriques de validation croisée pour ce modèle. \TODO{composition exacte des 7 sources et notebook d'origine, si retrouvé}
+
+\section{Features utilisées}
+
+Le moteur de scoring combine deux types d'entrée pour une seule régression logistique, confirmées dans \texttt{src/features/extract.py} :
+
+\begin{itemize}[nosep]
+\item \textbf{12 features tabulaires} : présence de langage urgent (\texttt{has\_urgency}), nombre d'URLs dans le corps (\texttt{url\_count}), présence d'une URL basée sur une adresse IP plutôt qu'un nom de domaine (\texttt{has\_ip\_url}), nombre de mots (\texttt{word\_count}), ressemblance du domaine expéditeur avec une marque connue via distance de Levenshtein (\texttt{is\_typosquat}, \texttt{typosquat\_distance}), entropie du domaine (\texttt{domain\_entropy}), longueur du domaine (\texttt{domain\_length}), ratio de chiffres dans le domaine (\texttt{domain\_digit\_ratio}), ratio de majuscules dans le corps (\texttt{uppercase\_ratio}), nombre de points d'exclamation (\texttt{exclamation\_count}), présence d'informations expéditeur (\texttt{has\_sender\_info}).
+\item \textbf{Un embedding Word2Vec} de 200 dimensions, moyenné sur le texte de l'email, pour capter des motifs sémantiques que les features de surface ne voient pas.
+\end{itemize}
+
+Les deux groupes sont concaténés en un seul vecteur, passé à la régression logistique, qui produit le \texttt{risk\_score} final (0--100).
+
+\section{Modèle de machine learning}
+
+Le classifieur retenu est une régression logistique. Comme indiqué en Section~4, les métriques précises de validation (precision, recall, F1, matrice de confusion) ne sont pas disponibles. Le notebook correspondant n'a pas été retrouvé. Les seules observations disponibles viennent de tests manuels réalisés pendant le stage via le simulateur : des emails clairement frauduleux avec domaine typosquatté (\texttt{micros0ft-verify.com}, \texttt{paypa1-security.com}) reçoivent des scores proches de 100/100, tandis que des emails légitimes reçoivent des scores proches de 0. Ce sont des observations qualitatives, pas une évaluation statistique formelle sur un jeu de test.
+
+\section{Mode agent autonome (LLM et tool calling)}
+
+PhishHunter inclut un mode agent optionnel où un LLM (Llama 3.3 70B, via l'API Groq) reçoit le score déjà calculé et les signaux déclenchés, puis doit choisir, par tool calling structuré, exactement une action parmi trois : \texttt{block\_email}, \texttt{escalate\_to\_human}, \texttt{deliver\_normally}. Le tool calling structuré signifie que le modèle ne peut choisir que parmi une liste fixe de fonctions. Il ne peut pas inventer une nouvelle action, et c'est le vrai code Python derrière chaque fonction qui s'exécute, pas le texte généré par le modèle. Si le cas est ambigu, l'agent peut d'abord appeler un outil auxiliaire \texttt{check\_domain\_age} (un vrai lookup WHOIS) avant de trancher. En cas d'échec de l'appel LLM (un problème intermittent connu du tool calling structuré), le système bascule automatiquement sur \texttt{escalate\_to\_human} plutôt que de laisser l'email sans décision.
+
+\section{Seuils de décision et intégration avec CrisisBot}
+
+PhishHunter est le seul agent du projet avec deux niveaux de décision distincts et assumés : un chemin déterministe fiable (score $\geq$ 70 $\rightarrow$ appel direct à CrisisBot), et le chemin agentique décrit ci-dessus, plus riche, pour la démonstration du raisonnement outillé.
+
+\section{De la donnée à l'affichage}
+
+Le dashboard liste les emails reçus avec un badge de score coloré (vert/orange/rouge) à côté de l'expéditeur et du sujet. La sélection d'un email ouvre un panneau de détail avec le score complet, la classification, et l'explication en langage naturel. Un bouton "Bloquer l'email et alerter l'employé" permet d'agir directement sur la recommandation basée sur le score, tandis qu'un bouton séparé "Laisser l'agent décider" déclenche le mode autonome : le dashboard affiche alors la trace de raisonnement pas à pas, chaque outil appelé (avec son entrée et son résultat), jusqu'à la décision finale clairement mise en avant.
+
+\section{Limites}
+
+Le dataset d'entraînement précis et le notebook correspondant n'ont pas pu être retrouvés avec certitude, ce qui empêche de documenter des métriques de performance formelles pour ce modèle. C'est la limite la plus importante de ce chapitre, à traiter en priorité si le notebook est retrouvé. Le tool calling structuré de l'API Groq connaît des échecs intermittents, mitigés par le repli automatique sur \texttt{escalate\_to\_human}. Il n'y a pas de connexion réelle à une vraie boîte mail (Microsoft Graph ou Gmail). Seul un squelette de webhook est prêt.
+
+\section{Conclusion}
+
+PhishHunter combine des features tabulaires classiques et un embedding sémantique pour une classification robuste, et va plus loin que les autres agents détection en autorisant, dans son mode optionnel, un LLM à choisir réellement une action via tool calling structuré. La principale zone d'ombre de ce chapitre reste documentaire : le dataset exact et les métriques précises du modèle n'ont pas pu être confirmés faute d'accès au notebook d'origine. Le chapitre suivant présente Sentinel, l'agent de détection de menace interne.
+
+\chapter{Sentinel}
+\markboth{Chapitre 6 : Sentinel}{}
+
+\section{Introduction}
+
+Sentinel est l'agent qui détecte les connexions qui s'écartent du comportement habituel d'un compte, sans être forcément une intrusion externe. C'est le seul agent du projet basé sur un modèle non supervisé.
+
+\section{Problématique}
+
+Sentinel ne cherche pas un attaquant externe : il cherche un comportement inhabituel venant d'un compte dont les identifiants sont corrects, comme se connecter à 3h du matin depuis un poste jamais vu, par exemple. C'est le problème classique de la menace interne : les identifiants étant valides, l'anomalie ne peut se détecter que par le contexte (horaire, poste, département), pas par un mot de passe erroné.
+
+\section{Rôle dans l'architecture CyberAware}
+
+Sentinel est un service FastAPI indépendant, avec un webhook d'entrée \texttt{/api/webhook/signin-event} protégé par un secret partagé et gérant la poignée de validation de l'appelant.
+
+\section{Dataset}
+
+Le modèle a été entraîné sur le \textbf{CERT Insider Threat Dataset} (Carnegie Mellon University, division CERT). Le notebook d'entraînement (retrouvé et vérifié pendant la rédaction de ce rapport) charge uniquement deux sources : \texttt{logon.csv} (3\,530\,285 événements bruts de connexion/déconnexion, 4\,000 utilisateurs uniques, 4\,400 postes uniques, période du 2 janvier 2010 au 1er juin 2011, aucune valeur manquante ni doublon) et les instantanés mensuels \texttt{LDAP} (22 départements dans le CERT d'origine). Les événements de type \texttt{Logoff} sont exclus dès le départ ; seuls les \texttt{Logon} sont conservés pour le feature engineering, soit 1\,948\,933 événements. Le notebook précise explicitement pourquoi les autres fichiers du dataset (\texttt{device.csv}, \texttt{http.csv}, \texttt{email.csv}, \texttt{file.csv}, \texttt{decoy\_file.csv}, \texttt{psychometric.csv}) ne sont volontairement pas chargés : les signaux qu'ils contiennent (copies USB, fichiers leurres, emails) n'existent pas dans un connecteur SSO bancaire réel (Entra ID), et casseraient donc la réutilisabilité visée du modèle. Ces données brutes ont ensuite été réduites à 7 features "universelles" détaillées ci-dessous.
+
+\section{Features retenues}
+
+Les 7 features sont confirmées dans le code de production (\texttt{feature\_engineering.py}) :
+
+\begin{itemize}[nosep]
+\item \texttt{hour\_sin}, \texttt{hour\_cos} : encodage cyclique de l'heure de connexion (sinus/cosinus), pour que 23h et 0h30 soient reconnues comme proches plutôt qu'opposées ;
+\item \texttt{is\_weekend} : connexion le week-end ;
+\item \texttt{is\_holiday} : jour férié (calendrier tunisien) ;
+\item \texttt{is\_off\_hours} : hors horaires de travail, recalibré sur des horaires bancaires tunisiens réels plutôt que sur les horaires américains du dataset d'origine ;
+\item \texttt{is\_sensitive\_department} : département sensible (Finance, Conformité, IT, Direction générale) ;
+\item \texttt{is\_new\_device} : poste jamais vu pour ce compte.
+\end{itemize}
+
+Ce choix de réduction est délibéré : en ne gardant que des features présentes dans quasiment n'importe quel système d'identité (Entra ID, Google Workspace...), le modèle reste réutilisable sans dépendre de champs spécifiques au dataset CERT.
+
+Un point technique honnête, visible dans le notebook et à signaler explicitement : la table de correspondance entre les départements du CERT (en anglais) et les départements tunisiens sensibles (\texttt{CERT\_TO\_TUNISIA\_DEPT}) est restée vide pendant l'entraînement, commentée dans le code comme "à remplir avec le vrai organigramme de la banque". En conséquence, la feature \texttt{is\_sensitive\_department} vaut 0 pour la totalité des 1\,948\,933 événements d'entraînement (confirmé par les statistiques descriptives du notebook : moyenne et écart-type nuls sur cette colonne). Le modèle Isolation Forest n'a donc jamais vu de variation sur cette feature pendant son entraînement ; elle ne devient effectivement non constante qu'au moment de l'inférence, quand un vrai nom de département tunisien est fourni (comme dans le test de portabilité de la Section~6.6). Les seuils différenciés par département (Section~6.7), eux, restent pleinement fonctionnels puisqu'ils sont appliqués après coup, indépendamment de ce que le modèle a appris.
+
+La recalibration des horaires (\texttt{is\_off\_hours}, \texttt{hour\_sin}/\texttt{hour\_cos}) suit deux régimes distincts plutôt qu'une distribution générique unique : un régime normal (septembre à juin, pic de connexions vers 9h30--11h et 14h30--15h) et un régime d'été "séance unique" (juillet-août, pic resserré vers 9h-10h), reproduisant la saisonnalité réelle des horaires bancaires tunisiens. Le notebook cite des horaires d'agences précis à titre de source (BNA 8h-16h, ATB 8h-16h30 en régime normal, ATB 8h15-13h30 et BIAT 7h15-13h30 en régime d'été). Ces valeurs sont documentées dans le notebook comme provenant de communiqués officiels des banques tunisiennes (2024-2026), sans qu'elles aient pu être re-vérifiées de façon indépendante pour ce rapport. Le régime du Ramadan (horaires réduits similaires à l'été, mais à dates mobiles selon le calendrier hégirien) est explicitement identifié comme non implémenté, et laissé comme piste d'amélioration future.
+
+\section{Modèle de machine learning (Isolation Forest)}
+
+Sentinel utilise un Isolation Forest, un modèle \textbf{non supervisé} : aucune étiquette "menace interne" n'a été utilisée pendant l'entraînement, car ce type de label propre n'existe presque jamais dans des données réelles de ce genre.
+
+Le principe, en résumé : l'algorithme découpe les données par des coupures aléatoires successives, et mesure, pour chaque point, combien de coupures sont nécessaires pour l'isoler complètement. Une connexion "normale" ressemble à beaucoup d'autres dans le dataset, donc il faut beaucoup de coupures pour la séparer du reste. Une connexion inhabituelle (horaire jamais vu combiné à un nouveau poste, par exemple) ressemble à très peu de choses, donc elle s'isole en très peu de coupures. Moins il en faut, plus le score d'anomalie est élevé.
+
+Les données sont séparées en entraînement et test selon une coupure temporelle à 70\% des dates (1\,364\,270 événements d'entraînement, 584\,663 de test, pas un simple mélange aléatoire, pour éviter que le modèle "voie" des dates futures pendant l'entraînement). Le modèle final est un \texttt{IsolationForest} de scikit-learn avec \texttt{n\_estimators=200} et \texttt{contamination=0,02}, ce dernier paramètre choisi après avoir comparé 4 valeurs (0,01 / 0,02 / 0,05 / 0,1) sur l'écart-type et les bornes des scores obtenus.
+
+Trois vérifications quantitatives sont réalisées dans le notebook, chacune avec un résultat chiffré réel :
+
+\begin{itemize}[nosep]
+\item \textbf{Stabilité entre graines} : deux entraînements identiques avec des graines aléatoires différentes (\texttt{random\_state=1} et \texttt{2}) sont comparés par corrélation de rang de Spearman sur les scores produits. Résultat : \textbf{0,989} (le notebook considère le modèle stable au-delà de 0,8).
+\item \textbf{Séparation sur des anomalies fabriquées} : 20 échantillons du jeu de test sont artificiellement modifiés (heure fixée à 3h du matin, département marqué sensible, nouveau poste) et comparés à 20 échantillons normaux non modifiés. Score moyen des anomalies fabriquées : \textbf{-0,0487} ; score moyen des échantillons normaux : \textbf{0,2082}. L'écart dans le sens attendu (anomalie = score plus bas) confirme que le modèle réagit correctement à une combinaison de signaux inhabituels.
+\item \textbf{Test de portabilité} : le modèle entraîné sur CERT est appliqué, \emph{sans réentraînement}, à un échantillon fabriqué de 3 événements au format Entra ID. Résultat exact obtenu : \texttt{ines.m@banque-abc.example} (connexion 8h30, département Commercial, poste connu) $\rightarrow$ risque 10/100, \texttt{no\_action} ; \texttt{karim.l@banque-abc.example} (connexion 3h12, département Direction Financière, sensible, nouveau poste) $\rightarrow$ risque 79/100, \texttt{escalate\_to\_human} ; \texttt{salma.g@banque-abc.example} (connexion 9h00, département RH, poste connu) $\rightarrow$ risque 1/100, \texttt{no\_action}. Le fait que ce calcul s'exécute sans erreur de dimension confirme que les 7 features suffisent à faire fonctionner le modèle sur un format de données différent de celui d'entraînement.
+\end{itemize}
+
+\section{Moteur de décision (seuils différenciés)}
+
+Le moteur de décision applique des seuils différents selon la sensibilité du département du compte concerné :
+
+\begin{itemize}[nosep]
+\item \textbf{Compte normal} : score $<$ 25 $\rightarrow$ aucune action ; 25--55 $\rightarrow$ mise sous surveillance ; 55--85 $\rightarrow$ formation ciblée assignée automatiquement ; $>$ 85 $\rightarrow$ escalade vers un analyste humain (avec notification CrisisBot).
+\item \textbf{Compte de département sensible} (Finance, Conformité, IT, Direction générale) : les mêmes quatre paliers sont abaissés à 15/40/65. Une anomalie identique est donc traitée plus strictement pour un compte à privilèges plus élevés.
+\end{itemize}
+
+Appliqué à l'ensemble des 1\,948\,933 événements du dataset, ce moteur de décision produit la répartition suivante, telle que calculée dans le notebook : 1\,665\,987 événements en \texttt{no\_action} (85,5\%), 211\,208 en \texttt{trigger\_training} (10,8\%), 66\,815 en \texttt{monitor} (3,4\%), et 4\,923 en \texttt{escalate\_to\_human} (0,25\%). Cette répartition très déséquilibrée vers \texttt{no\_action} est cohérente avec ce qu'on attend d'un détecteur d'anomalies bien calibré : la grande majorité des connexions réelles sont effectivement normales.
+
+\section{Robustesse en usage concurrent}
+
+Un travail réalisé pendant le stage a porté sur la fiabilité du service quand plusieurs requêtes arrivent en même temps, ou pendant qu'un réentraînement est en cours. Le modèle actuellement actif est échangé de façon atomique (état immuable), donc une requête en cours de traitement n'est jamais affectée par un remplacement de modèle en plein milieu. Les écritures (fin d'un réentraînement) sont sérialisées derrière un verrou non bloquant : si un nouveau signal de réentraînement arrive pendant qu'un autre est déjà en cours, il est fusionné plutôt que de démarrer un job concurrent. Le réentraînement lui-même s'exécute sur un unique worker persistant en arrière-plan, plutôt qu'un thread par requête, et ne se déclenche qu'après l'accumulation d'un nombre minimal de nouveaux cas.
+
+\section{Connexions réelles via le système d'authentification partagé}
+
+Les 6 dashboards du projet partagent désormais une authentification par email et mot de passe. Chaque connexion réussie est journalisée (agent d'origine, horodatage), et peut alimenter l'analyse de Sentinel comme un événement de connexion réel, en complément, pas en remplacement, des cas simulés utilisés par ailleurs.
+
+\section{De la donnée à l'affichage}
+
+Le dashboard Sentinel présente une sélection de "cas" de connexion sous forme de puces ; en sélectionner un remplit un flux d'activité façon console avec les détails bruts de la connexion. Le bouton "Analyser avec Sentinel" anime le pipeline de décision étape par étape (extraction des features, scoring, décision par seuil), puis affiche une carte de résultat colorée selon l'issue, avec le score calculé et la raison en langage clair. Un formulaire séparé permet de simuler manuellement une connexion et d'obtenir une analyse instantanée avec le même modèle.
+
+\section{Limites}
+
+Étant un modèle non supervisé, Sentinel n'a pas de métriques classiques de type precision/recall disponibles (il n'existe pas d'étiquette "menace réelle" sur ce dataset). Mais, contrairement à ce qu'on pourrait penser, il ne manque pas totalement de validation chiffrée : la stabilité entre graines (corrélation de rang 0,989) et le test de séparation sur anomalies fabriquées (Section~6.6) sont deux vérifications quantitatives réelles, même si elles ne remplacent pas une mesure de précision sur des cas confirmés.
+
+La feature \texttt{is\_sensitive\_department} n'a jamais varié pendant l'entraînement (table de correspondance des départements laissée vide, voir Section~6.5) : le modèle n'a donc pas appris de signal propre à cette feature, qui ne devient utile qu'au moment de l'inférence. Le dataset reste un dataset CERT nord-américain, adapté a posteriori au contexte tunisien (horaires, jours fériés) plutôt que collecté directement sur de vraies données bancaires. Le notebook rappelle explicitement qu'une déclaration/autorisation auprès de l'INPDP (l'autorité tunisienne de protection des données personnelles) serait nécessaire avant tout traitement réel de données de connexion nominatives, démarche non entreprise pendant ce stage, le projet restant à l'état de prototype sur données de recherche. Aucune connexion réelle n'a été établie avec un vrai SIEM ou Entra ID en production ; seul le webhook côté Sentinel est fonctionnel mécaniquement.
+
+\section{Conclusion}
+
+Sentinel illustre une approche différente des deux agents précédents : un modèle non supervisé, entraîné sans étiquettes, dont la solidité repose sur un choix délibéré de features génériques plutôt que sur une performance mesurée classiquement. Le travail réalisé pendant le stage a renforcé sa fiabilité en usage concurrent et lui a donné accès à des événements de connexion réels via le système d'authentification partagé. Le chapitre suivant présente CrisisBot, le seul agent du projet sans aucun modèle.
+
+\chapter{CrisisBot}
+\markboth{Chapitre 7 : CrisisBot}{}
+
+\section{Introduction}
+
+CrisisBot est l'agent qui coordonne la réponse une fois qu'une menace a été détectée par l'un des quatre autres agents. Ce n'est pas un chatbot conversationnel. C'est un orchestrateur de réponse à incident, sans aucun modèle de machine learning.
+
+\section{Problématique}
+
+Une fois une menace détectée, il faut encore agir concrètement : isoler le poste concerné, prévenir les bonnes personnes, préparer un message pour informer le reste de l'organisation sans créer de panique. CrisisBot exécute cette réponse coordonnée de façon automatique et cohérente, à chaque fois, quel que soit celui des quatre agents de détection qui a déclenché l'alerte.
+
+\section{Rôle dans l'architecture CyberAware}
+
+CrisisBot expose un endpoint webhook (\texttt{/api/webhook/incident}) que les quatre agents de détection appellent automatiquement et directement, sans intervention humaine, dès que leur propre seuil est dépassé. Un second endpoint (\texttt{/api/simulate}) permet à un analyste de déclencher le même runbook manuellement depuis le dashboard.
+
+\section{Approche adoptée}
+
+CrisisBot \textbf{n'utilise aucun modèle de machine learning}. Son rôle n'est pas de détecter ou de classifier quoi que ce soit, mais d'exécuter un runbook fixe et déterministe (confirmé dans \texttt{server.py}) à chaque notification d'incident reçue.
+
+\section{Le runbook (5 étapes)}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.6cm}>{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}p{7.5cm}@{}}
+\toprule
+\textbf{\#} & \textbf{Étape} & \textbf{Détail} \\
+\midrule
+1 & Isoler le poste affecté & Déconnexion réseau automatique du poste concerné \\
+2 & Notifier le RSSI & Alerte immédiate avec les indicateurs de compromission détectés \\
+3 & Notifier la direction & Résumé exécutif pour déclencher la cellule de crise si besoin \\
+4 & Activer la cellule de crise & Convocation automatique des référents IT, sécurité, communication \\
+5 & Préparer la communication interne & Message prêt pour informer les équipes sans créer de panique \\
+\bottomrule
+\end{tabular}
+\caption{Le runbook fixe à 5 étapes de CrisisBot}
+\end{table}
+
+Ces cinq étapes, et leur ordre, ne changent jamais. Seuls changent l'incident et l'agent qui l'a déclenché.
+
+\section{Rôle du LLM dans la rédaction de la communication}
+
+Pour la dernière étape uniquement, un LLM (via Groq, module \texttt{llm\_comms.py}) peut rédiger le texte de l'annonce interne, adapté à la description spécifique de l'incident, mais seul le texte est généré par le modèle. Le fait que cette étape ait lieu, et dans quel ordre, reste entièrement fixé par le code, indépendamment du modèle. Si le LLM n'est pas configuré, un message générique de repli est utilisé, et CrisisBot continue de fonctionner normalement.
+
+\section{Intégration Slack réelle}
+
+CrisisBot est connecté à un vrai webhook entrant Slack (module \texttt{notifications.py}) : quand \texttt{SLACK\_WEBHOOK\_URL} est correctement configuré, l'alerte n'est pas seulement simulée à l'écran mais réellement postée sur un canal Slack, ce qui a été vérifié de bout en bout pendant le stage. Les canaux Teams et Email affichés dans l'interface restent, à ce stade, simulés. Aucune intégration réelle n'a été connectée pour ces deux canaux.
+
+\section{De la donnée à l'affichage}
+
+Le dashboard CrisisBot affiche le runbook fixe à 5 étapes sous forme de checklist ; quand un incident est traité, chaque étape passe d'en attente à en cours puis à terminée, avec une simulation réaliste du temps écoulé. Un bandeau de statut indique si l'intégration Slack réelle est actuellement configurée ou seulement en mode simulé. Une fois le runbook terminé, une ligne de résumé confirme le temps total de traitement, liste les canaux notifiés, et précise explicitement si le message Slack a été réellement envoyé ou seulement simulé.
+
+\section{Limites}
+
+Aucune authentification n'est en place sur les appels entrants des quatre autres agents vers CrisisBot. Les canaux Teams et Email restent uniquement visuels dans l'interface, sans intégration réelle connectée.
+
+\section{Conclusion}
+
+CrisisBot montre qu'un agent utile dans une architecture de cybersécurité n'a pas besoin de modèle : sa valeur vient de l'exécution fiable et systématique d'un runbook, et de sa seule intégration réellement connectée à un système externe (Slack). Le chapitre suivant présente le Serious Game, développé en parallèle des cinq agents de détection/réponse.
+
+\chapter{Serious Game}
+\markboth{Chapitre 8 : Serious Game}{}
+
+\section{Introduction}
+
+Le Serious Game est un outil de sensibilisation développé en parallèle des cinq agents. Il ne détecte rien : il met le joueur dans la position d'un pentester qui teste des employés fictifs avec différents vecteurs d'ingénierie sociale.
+
+\section{Objectif pédagogique}
+
+Le joueur incarne un pentester qui teste des employés fictifs de "Banque ABC" avec différents vecteurs d'ingénierie sociale (phishing, QR code piégé, faux formulaire de gain). L'objectif est de rendre concret, de façon interactive, ce à quoi ressemble une tentative d'ingénierie sociale réussie ou déjouée, et de relier chaque vecteur à l'agent CyberAware qui le détecterait en conditions réelles.
+
+\section{Rôle dans l'architecture CyberAware}
+
+Le Serious Game tourne comme un service indépendant (bibliothèque standard \texttt{http.server}, aucune dépendance à installer), sur son propre port (8880), distinct des cinq autres agents. Ce n'est pas un agent de détection au même titre que DarkWatch, NetScope, PhishHunter, Sentinel ou CrisisBot. Il n'a pas de modèle, pas de webhook entrant de production, pas de rôle de scoring. C'est un outil pédagogique qui illustre le rôle des agents plutôt que d'en être un lui-même.
+
+\section{Cibles et vecteurs d'attaque}
+
+\texttt{targets.py} définit 11 profils fictifs d'employés de "Banque ABC" (nom, département, score de risque, nombre de modules de formation complétés sur 9). Le code précise lui-même que ces valeurs proviennent d'une capture d'écran fournie par l'utilisatrice, arrondies et fictives, et ne sont pas connectées à une vraie plateforme de formation.
+
+Quatre vecteurs d'attaque sont disponibles, chacun avec un poids et un lien explicite vers l'agent CyberAware concerné :
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Vecteur} & \textbf{Description} & \textbf{Agent associé} \\
+\midrule
+Phishing & Email de phishing ciblé & PhishHunter \\
+WhatsApp & Message WhatsApp frauduleux & PhishHunter \\
+Loterie & Faux formulaire "Vous avez gagné 20 000 DT" & Sentinel \\
+QR code & QR code piégé (quishing) & NetScope \\
+\bottomrule
+\end{tabular}
+\caption{Les quatre vecteurs d'attaque du Serious Game}
+\end{table}
+
+\section{Mécanique de résolution réelle}
+
+Un point important, documenté explicitement dans le code lui-même : dans une version antérieure, le résultat d'une tentative était déterminé par un tirage au sort pondéré. Ce n'est plus le cas. Depuis \texttt{attempts.py}, une tentative reste \texttt{pending} tant qu'aucun événement réel ne s'est produit, et n'est finalisée que par l'un de ces événements observables :
+
+\begin{itemize}[nosep]
+\item \textbf{\texttt{clicked}} : un vrai clic sur le lien envoyé, qui déclenche une vraie requête \texttt{GET /track/<token>} côté serveur. C'est le seul état comptant comme une réussite du point de vue du pentester (joueur).
+\item \textbf{\texttt{reported}} : bouton "Signaler cette tentative" cliqué dans l'interface.
+\item \textbf{\texttt{ignored}} : bouton "Ignorer sans agir" cliqué dans l'interface.
+\end{itemize}
+
+Un quatrième état, \texttt{opened}, existe dans le schéma de données pour une évolution future, mais n'est pas encore atteignable par une action réelle. Tant qu'aucun de ces événements ne s'est produit, la tentative ne compte dans aucune statistique.
+
+\section{Évolution du score de risque}
+
+Le score de risque de la cible évolue après résolution selon l'action observée : \texttt{clicked} le fait monter de 6 points, \texttt{reported} le fait baisser de 6, \texttt{ignored} de 1, toujours borné entre 5 et 95. Un endpoint (\texttt{/api/campaign/reset}) permet de remettre tous les risques à leur valeur de départ.
+
+\section{Rôle du LLM}
+
+\texttt{llm\_scenario.py} génère, via Groq, le texte narratif qui accompagne le résultat affiché au joueur, une fois l'action réelle déjà connue. Le LLM ne décide jamais de l'action elle-même, il la raconte seulement, ce qui suit le même principe que celui appliqué aux autres agents CyberAware.
+
+\section{Canaux d'envoi réels optionnels}
+
+Trois canaux permettent, en option et désactivés par défaut, d'envoyer réellement le message plutôt que de l'afficher uniquement dans le navigateur : un vrai email (SMTP standard), un vrai message WhatsApp automatique (GREEN API, le téléphone personnel sert de passerelle), et un vrai QR code scannable (API publique qrserver.com), testable avec un vrai téléphone sur le même réseau Wi-Fi.
+
+\section{Mode démo automatique}
+
+Un mode démo (\texttt{auto\_simulate.py}) peut être activé via \texttt{python launch\_all.py --simulate}, qui joue seul en arrière-plan : il choisit une cible et un vecteur au hasard toutes les ~20 secondes, envoie la simulation, puis tranche le résultat. C'est le seul endroit de tout le Serious Game où un résultat est encore tiré au sort (pondéré) plutôt que déduit d'un vrai clic, et uniquement dans ce mode démo.
+
+\section{Lien pédagogique avec les autres agents}
+
+Chaque vecteur est explicitement relié à l'agent CyberAware qui le détecterait en conditions réelles : phishing et WhatsApp vers PhishHunter, le faux formulaire "loterie" vers Sentinel, le QR code vers NetScope. Ce lien est affiché au joueur après chaque tentative, sous forme de note explicative.
+
+\section{De la donnée à l'affichage}
+
+Le dashboard permet de choisir une cible et un vecteur, affiche le message simulé correspondant, et montre l'historique déjà accumulé contre cette cible avec ce vecteur avant même de lancer une nouvelle attaque. Des statistiques de campagne (taux d'exploitation global) sont également affichées.
+
+\section{Limites}
+
+Les données (compteur de campagne, tentatives en attente, historique) sont volontairement en mémoire, non persistées : un redémarrage du serveur repart entièrement à zéro. Les profils d'employés restent fictifs, non connectés à une vraie plateforme de formation. Le lien de tracking pointe par défaut vers \texttt{localhost}, donc injoignable depuis un autre appareil sans configuration manuelle. Le mode démo automatique repose sur un tirage au sort plutôt que sur une vraie interaction.
+
+\section{Conclusion}
+
+Le Serious Game complète les cinq agents de détection avec un volet pédagogique concret : il ne détecte rien lui-même, mais relie explicitement chaque vecteur d'attaque simulé à l'agent qui le repérerait en conditions réelles. Son évolution la plus notable pendant le stage a été le passage d'un résultat tiré au sort à une résolution basée sur de vrais événements observables. Le chapitre suivant aborde l'intégration globale du projet et les résultats d'ensemble.
+
+% =====================================================
+\part{Intégration et validation}
+% =====================================================
+
+\chapter{Intégration globale et résultats}
+\markboth{Chapitre 9 : Intégration globale et résultats}{}
+
+\section{Introduction}
+
+Ce chapitre présente ce qui relie les six composants du projet entre eux : le simulateur de démonstration, le système d'authentification partagé, et le dépôt Git déployé sur le GitLab interne d'Hydatis.
+
+\section{Simulateur d'événements et mode démo}
+
+En usage normal, chaque agent reste silencieux tant que personne ne lui envoie rien. Aucun agent ne se déclenche tout seul sans un vrai événement. Pour permettre une démonstration sans dépendre d'un vrai système externe, \texttt{event\_simulator.py} rejoue un flux de faux événements plausibles, activé uniquement via \texttt{python launch\_all.py --simulate}, démarré environ 25 secondes après le lancement des agents.
+
+Point important sur la nature de cette simulation : le script appelle les vrais webhooks de PhishHunter, Sentinel et NetScope. Ce sont les mêmes endpoints qu'un vrai SIEM, une vraie boîte mail ou un vrai pare-feu appellerait en production. Le comportement observé en démo (score calculé, décision, notification CrisisBot) est donc le vrai comportement du système, pas une version simplifiée. NetScope et DarkWatch disposent en plus de leur propre boucle d'auto-scan interne, indépendante de ce script.
+
+\section{Système d'authentification partagée (login/logout)}
+
+Un système d'authentification léger (\texttt{auth.py}) a été mis en place et dupliqué à l'identique dans les 7 endroits du projet (les 6 dashboards et la page d'accueil), suivant le même principe que \texttt{crisisbot\_client.py} déjà dupliqué ailleurs dans le portfolio.
+
+Le principe retenu : un seul compte de démonstration (email et mot de passe définis dans \texttt{.env}, pas de vraie base d'utilisateurs), une session sans état côté serveur. Le cookie contient lui-même l'email, une expiration et une signature HMAC-SHA256, vérifiable indépendamment par chaque agent tant qu'ils partagent le même secret. Le cookie est posé sans attribut \texttt{Domain}, ce qui le rend partagé entre tous les ports sur \texttt{localhost} : se connecter une fois sur un des 7 endroits authentifie automatiquement les 6 autres. Le système reste désactivé par défaut, pour ne rien changer au comportement existant tant qu'il n'est pas explicitement activé.
+
+Un point réel à signaler : chaque connexion réussie n'est pas seulement journalisée dans un fichier (\texttt{login\_history.jsonl}), elle est aussi transmise, en best-effort, au vrai webhook de Sentinel. Une connexion humaine réelle est donc scorée par le vrai modèle Isolation Forest exactement comme le serait une connexion Entra ID/SIEM réelle, plutôt que d'être seulement un événement simulé.
+
+Le développement de ce système a révélé un bug réel, détaillé au Chapitre~10 : le format du cookie se cassait silencieusement parce que l'email administrateur contient lui-même un point. Corrigé en découpant uniquement les deux derniers points plutôt que tous les points de la chaîne.
+
+\section{Dépôt Git et déploiement sur le GitLab interne d'Hydatis}
+
+Un dépôt Git a été créé et poussé sur le GitLab interne d'Hydatis. Cette étape est datée objectivement par l'historique Git lui-même : le premier commit ("Initial commit — CyberAware") date du 14 août 2026 à 11h28, confirmé directement par \texttt{git log}.
+
+Le dépôt contient le code des six sous-projets, le simulateur d'événements, et, après une correction, les modèles de machine learning réellement entraînés (PhishHunter, NetScope, Sentinel). Il faut préciser honnêtement une nuance : la première tentative de pousser le modèle PhishHunter n'avait en réalité poussé que des fichiers de configuration (\texttt{.gitkeep}, listes de features et de marques connues), le fichier \texttt{.gitignore} du projet excluant encore les poids réels du modèle à ce moment-là. Cette exclusion a ensuite été retirée pour que les modèles réellement entraînés (fichiers \texttt{.pkl}, \texttt{.model}, \texttt{.npy}, \texttt{.joblib}) soient effectivement versionnés dans le dépôt.
+
+\section{Résultats d'ensemble observés}
+
+Il n'existe pas de métrique d'intégration formelle chiffrée pour l'ensemble du système (pas de mesure de bout en bout du taux de faux positifs global ou du temps de traitement inter-agents). \TODO{métrique d'intégration globale chiffrée, si mesurée ultérieurement}
+
+Ce qui est réellement vérifié fonctionnellement : une démonstration de bout en bout avec un téléphone physique, dont le trafic DNS réel remonte jusqu'au dashboard NetScope ; des connexions humaines réelles scorées par Sentinel via le système d'authentification partagé ; une notification Slack réellement reçue lors d'un incident traité par CrisisBot.
+
+\section{Conclusion}
+
+Ce chapitre a montré comment les six composants du projet s'articulent au-delà de leur fonctionnement individuel : un simulateur qui appelle les vrais webhooks pour une démonstration réaliste, une authentification partagée qui transforme une simple connexion en donnée réelle pour Sentinel, et un dépôt Git réellement déployé sur l'infrastructure d'Hydatis. Le chapitre suivant reprend l'ensemble des difficultés rencontrées et des limites du projet, avant de conclure sur les perspectives d'évolution.
+
+% =====================================================
+\part{Limites et perspectives}
+% =====================================================
+
+\chapter{Difficultés, limites et perspectives}
+\markboth{Chapitre 10 : Difficultés, limites et perspectives}{}
+
+\section{Introduction}
+
+Ce chapitre rassemble les difficultés techniques rencontrées pendant le stage, les limites du projet qui ne sont pas propres à un seul agent, et les perspectives d'évolution.
+
+\section{Difficultés techniques rencontrées et solutions appliquées}
+
+\begin{itemize}[nosep]
+\item \textbf{Race condition dans le simulateur d'événements} : le simulateur de démonstration marquait parfois un agent comme "injoignable" alors qu'il venait tout juste de démarrer et n'avait pas encore fini d'ouvrir son port. \emph{Solution} : délai augmenté avant la première requête, et désactivation du buffering de sortie standard pour les processus lancés.
+\item \textbf{Comparaison de secret vulnérable aux attaques temporelles} : une comparaison directe de chaînes entre le secret reçu et le secret attendu peut, en théorie, laisser fuir de l'information via le temps de réponse. \emph{Solution} : remplacée par \texttt{hmac.compare\_digest}, appliquée aux webhooks de NetScope et Sentinel.
+\item \textbf{JSON malformé sur le webhook de CrisisBot} : un appel externe envoyant un corps JSON invalide ou vide provoquait une exception non gérée. \emph{Solution} : lecture défensive du corps de la requête, renvoyant une réponse HTTP 400 explicite.
+\item \textbf{Persistance de la variable Slack} : \texttt{SLACK\_WEBHOOK\_URL}, définie dans une session de terminal, ne persistait pas automatiquement entre les redémarrages. \emph{Solution} : documentation explicite de la commande à relancer, et un statut "configuré / non configuré" clairement affiché sur le dashboard.
+\item \textbf{Conflits de port au lancement simultané des cinq agents} : chaque agent démarrant sur un port fixe, deux instances lancées par erreur entraient en conflit. \emph{Solution} : chaque port configurable via une variable d'environnement dédiée.
+\item \textbf{Échecs intermittents du tool calling LLM dans PhishHunter} : l'appel de function calling structuré vers l'API Groq échouait parfois de façon intermittente. \emph{Solution} : repli automatique sur \texttt{escalate\_to\_human} en cas d'échec.
+\item \textbf{Fichier \texttt{.env} racine absent} : au tout début de la mise en place de l'authentification partagée, aucun fichier \texttt{.env} n'existait à la racine du projet, donc l'authentification restait silencieusement désactivée malgré un code fonctionnel. \emph{Solution} : création explicite du fichier \texttt{.env} avec les vraies valeurs.
+\item \textbf{Cookie de session cassé par le point dans l'email administrateur} : après le passage d'un identifiant de type pseudo à une adresse email, l'authentification a cessé de fonctionner silencieusement sur les six dashboards. \emph{Cause} : le cookie de session empaquetait trois champs (email, expiration, signature) séparés par des points, découpés avec un simple \texttt{split(".")} attendant exactement trois morceaux. Mais l'email administrateur contient lui-même un point, produisant quatre morceaux et faisant échouer la vérification à chaque fois. \emph{Solution} : le cookie est désormais découpé avec \texttt{rsplit(".", 2)}, qui isole toujours les deux derniers champs (sans point) depuis la droite, quel que soit le nombre de points dans l'email.
+\end{itemize}
+
+\section{Limites actuelles du projet}
+
+Les événements traités pendant le stage restent majoritairement générés par un simulateur contrôlé plutôt que par des systèmes de production réels, faute d'accès à une infrastructure bancaire réelle. NetScope (résolution DNS réelle, démo téléphone) et Sentinel (connexions réelles via l'authentification partagée) restent les deux exceptions partielles à cette règle.
+
+Aucune connexion réelle et active n'a été établie avec Microsoft Exchange/Graph, Active Directory/Entra ID, un pare-feu de production ou un SIEM : ces intégrations restent au stade de code prêt, pas de déploiement réel.
+
+L'authentification entre agents repose uniquement sur un secret partagé comparé en temps constant, sans mécanisme plus robuste. Les dashboards eux-mêmes ne disposent que d'un compte de démonstration unique, sans vraie base d'utilisateurs ni gestion de rôles.
+
+Le stockage des données repose sur des fichiers JSON/log locaux, sans base de données persistante ni sauvegarde automatisée. Il n'existe pas de pipeline de réentraînement automatique des modèles (MLOps), ni d'intégration/déploiement continus (CI/CD).
+
+Certaines métriques de performance précises restent à documenter formellement, en particulier pour PhishHunter et Sentinel, dont les notebooks d'entraînement n'ont pas pu être retrouvés avec certitude.
+
+\section{Perspectives d'évolution}
+
+\begin{itemize}[nosep]
+\item Finaliser la connexion réelle à Microsoft Graph pour que PhishHunter traite de vrais emails plutôt que des emails simulés.
+\item Connecter Sentinel à un vrai fournisseur d'identité (Entra ID) ou à un SIEM, en s'appuyant sur la portabilité déjà démontrée et les connexions réelles déjà journalisées.
+\item Connecter NetScope à un vrai pare-feu ou proxy, en prolongeant la démonstration locale de proxy DNS vers un tap réseau de production.
+\item Activer les canaux Teams et Email de CrisisBot, actuellement simulés.
+\item Mettre en place un mécanisme d'authentification inter-agents plus robuste, et une vraie gestion des utilisateurs pour les dashboards.
+\item Ajouter une base de données persistante et un mécanisme de sauvegarde.
+\item Documenter formellement les métriques de performance manquantes (PhishHunter, Sentinel).
+\item Connecter les profils fictifs du Serious Game à une vraie plateforme de formation (LMS).
+\end{itemize}
+
+\section{Conclusion du chapitre}
+
+Les difficultés rencontrées pendant ce stage n'ont, individuellement, rien d'exceptionnel. Mais elles illustrent une réalité des systèmes multi-agents en production : la robustesse ne vient pas seulement de la qualité des modèles de machine learning, mais autant de la gestion défensive des cas limites. Les limites identifiées ici tracent aussi un chemin concret vers une suite possible du projet.
+
+% =====================================================
+% CONCLUSION GÉNÉRALE
+% =====================================================
+\chapter*{Conclusion générale}
+\addcontentsline{toc}{chapter}{Conclusion générale}
+\markboth{Conclusion générale}{}
+
+Ce stage chez Hydatis m'a permis de travailler sur un projet complet de cybersécurité, CyberAware, en combinant plusieurs disciplines que j'avais surtout vues séparément pendant ma formation : le machine learning supervisé et non supervisé, l'utilisation de LLM dans une architecture décisionnelle, l'intégration d'APIs externes réelles, et la conception d'un système multi-agents communiquant par webhooks.
+
+Sur le plan technique, j'ai dû faire des choix concrets plutôt que théoriques. Décider quand un modèle entraîné apporte réellement quelque chose (NetScope, PhishHunter, Sentinel) et quand une simple logique déterministe ou un appel API suffit (DarkWatch, CrisisBot). Comparer plusieurs modèles avant d'en retenir un plutôt que de partir directement sur le premier qui fonctionne. Et surtout, encadrer strictement le rôle des LLM dans le système : les laisser rédiger et expliquer, sauf dans deux cas précis (DarkWatch en mode autonome, PhishHunter en mode agent) où j'ai volontairement laissé un modèle décider, mais toujours parmi un ensemble fermé d'actions, jamais librement.
+
+Ce stage m'a aussi confronté à des problèmes que je n'avais pas l'habitude de rencontrer en travaux pratiques : un bug de session qui casse silencieusement à cause d'un détail de format, des appels réseau qui doivent rester best-effort pour ne jamais bloquer un agent, ou encore la nécessité de garder un système utilisable même en cas de réentraînement de modèle en cours. Ce sont des problèmes de robustesse, pas de performance de modèle, et c'est une des choses les plus utiles que j'en retire.
+
+Je reste honnête sur les limites de ce que j'ai construit pendant ces sept semaines : la majorité des événements traités restent générés par un simulateur plutôt que par de vrais systèmes de production, et plusieurs intégrations (Microsoft Graph, SIEM, Active Directory) restent au stade de code prêt mais non connecté. Ce n'est pas un système bancaire prêt à être déployé. C'est un prototype fonctionnel, dont la logique de détection, de scoring et de notification est réellement opérationnelle et conçue dès le départ pour accepter de vrais événements sans refonte.
+
+Ce stage m'a donné une compréhension beaucoup plus concrète de la façon dont une architecture de cybersécurité orientée IA se construit en pratique. Pas seulement le choix d'un modèle, mais tout ce qui l'entoure : l'intégration, la sécurité des échanges, l'explicabilité, et la limite entre ce qu'un système automatisé peut décider seul et ce qui doit rester supervisé.
+
+% =====================================================
+% BIBLIOGRAPHIE / WEBOGRAPHIE
+% =====================================================
+\chapter*{Bibliographie et Webographie}
+\addcontentsline{toc}{chapter}{Bibliographie et Webographie}
+
+\begin{itemize}[nosep]
+\item XposedOrNot, API publique de recherche de fuites de données. \url{https://xposedornot.com}
+\item Canadian Institute for Cybersecurity, dataset CIC-BellDNS-Exfiltration2021. \url{https://www.unb.ca/cic/datasets/}
+\item Carnegie Mellon University, CERT Division, CERT Insider Threat Dataset. \url{https://www.cert.org}
+\item Groq, documentation de l'API d'inférence LLM. \url{https://console.groq.com/docs}
+\item scikit-learn, documentation officielle. \url{https://scikit-learn.org}
+\item LightGBM, documentation officielle. \url{https://lightgbm.readthedocs.io}
+\item SHAP (SHapley Additive exPlanations), documentation officielle. \url{https://shap.readthedocs.io}
+\item gensim, documentation Word2Vec. \url{https://radimrehurek.com/gensim/}
+\item Microsoft Graph API, documentation officielle (intégration envisagée, non finalisée). \url{https://learn.microsoft.com/graph}
+\item Slack, documentation des webhooks entrants. \url{https://api.slack.com/messaging/webhooks}
+\item URLhaus (abuse.ch), flux public de menaces (domaines/URLs malveillants), utilisé par le flux en direct de NetScope. \url{https://urlhaus.abuse.ch}
+\item dnspython, boîte à outils DNS, utilisée pour la résolution en direct de NetScope et le proxy DNS local. \url{https://www.dnspython.org}
+\item GREEN API, passerelle d'envoi WhatsApp automatisée, utilisée par le Serious Game. \url{https://green-api.com}
+\end{itemize}
+
+\TODO{compléter cette liste avec toute autre source réellement consultée pendant le stage}
+
+% =====================================================
+% ANNEXES
+% =====================================================
+\appendix
+\chapter*{Annexes}
+\addcontentsline{toc}{chapter}{Annexes}
+\markboth{Annexes}{}
+
+\section*{Annexe A : Exemple d'appel webhook vers CrisisBot}
+\begingroup\small
+\begin{verbatim}
+POST /api/webhook/incident
+Content-Type: application/json
+
+{
+  "source_agent": "netscope",
+  "severity": "high",
+  "description": "Suspicion d'exfiltration DNS vers un domaine a forte entropie"
+}
+\end{verbatim}
+\endgroup
+
+\section*{Annexe B : Exemple de features envoyées à NetScope (mode "features précalculées")}
+\begingroup\small
+\begin{verbatim}
+{
+  "entropy": 3.91, "len": 42, "FQDN_count": 4,
+  "subdomain_length": 18, "subdomain": 1, "numeric": 6,
+  "special": 0, "labels": 4, "labels_max": 18,
+  "labels_average": 9.5, "rr_name_entropy": 3.7,
+  "rr_name_length": 42, "rr_count": 1, "a_records": 1,
+  "ttl_mean": 300, "ttl_variance": 0
+}
+\end{verbatim}
+\endgroup
+
+\section*{Annexe C : Liste des 12 features tabulaires de PhishHunter (ordre exact du modèle)}
+\begingroup\small
+\begin{verbatim}
+has_urgency, url_count, has_ip_url, word_count, is_typosquat,
+typosquat_distance, domain_entropy, domain_length, domain_digit_ratio,
+uppercase_ratio, exclamation_count, has_sender_info
+\end{verbatim}
+\endgroup
+
+\end{document}

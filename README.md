@@ -47,7 +47,8 @@ Chaque agent tourne indépendamment (son propre venv, son propre port) et commun
 - **Technologie** : Python, FastAPI + Uvicorn ; modèle LightGBM (`scikit-learn`/`lightgbm`) + SHAP pour l'explicabilité.
 - **Entrée** : 16 features statistiques calculées sur le nom de domaine et la réponse DNS.
 - **Sortie** : score de risque 0-100, niveau (Faible/Moyen/Élevé/Critique), facteurs SHAP principaux.
-- **Intégrations** : webhook `/webhook/traffic-event` (`[IMPLEMENTED]`, secret partagé HMAC) ; boucle interne `auto_scan.py` (`[IMPLEMENTED + DEMO]`, échantillonne un CSV local) ; calcul de features en direct à partir d'un simple nom de domaine (`[IMPLEMENTED]`, `live_features.py`, avec résolution DNS réelle).
+- **Intégrations** : webhook `/webhook/traffic-event` (`[IMPLEMENTED]`, secret partagé HMAC) ; boucle interne `auto_scan.py` (`[IMPLEMENTED]`, tire un domaine réel via `live_feed.py` puis résout ses vraies features DNS, plus de CSV factice) ; calcul de features en direct à partir d'un simple nom de domaine (`[IMPLEMENTED]`, `live_features.py`, résolution DNS réelle via `dnspython`) ; flux de menaces réel (`[IMPLEMENTED]`, `live_feed.py`, liste de domaines malveillants actifs tirée d'URLhaus/abuse.ch, mêlée à des domaines légitimes et DGA pour la démo).
+- **Démo trafic réel (téléphone → PC)** : `dns_proxy.py` (relais DNS transparent sur le port 53, ne modifie jamais les paquets, journalise juste le domaine demandé) + `tail_bridge.py` (suit ce journal en direct et pousse chaque domaine vers `/webhook/traffic-event`) permettent de pointer le DNS d'un vrai téléphone vers le PC et de voir son trafic réel remonter dans le dashboard NetScope, panneau "Trafic en direct" (`/live-feed`, polling 2s, lignes cliquables pour le détail du score).
 - **Statut** : deux seuils distincts — 50 (verdict suspect/normal, affichage) et 80 (`AUTO_ACT_THRESHOLD`, isolement automatique sans humain).
 
 ### PhishHunter — détection de phishing par email
@@ -178,11 +179,19 @@ python launch_all.py
 
 Comment ça marche : `launch_all.py` charge ce `.env` racine et propage les
 variables `CYBERAWARE_*` à tous les sous-process (même mécanisme que
-`GROQ_API_KEY`/`HF_TOKEN`). La session est un cookie signé (HMAC-SHA256, sans
-état stocké côté serveur) posé sans attribut `Domain` — les cookies ne sont
-pas cloisonnés par port en HTTP, donc se connecter une fois sur `:8000`
-authentifie automatiquement les 6 autres ports. Se déconnecter via `/logout`
-sur n'importe lequel des 7 serveurs.
+`GROQ_API_KEY`/`HF_TOKEN`). La connexion se fait par email + mot de passe
+(`CYBERAWARE_ADMIN_EMAIL`/`CYBERAWARE_ADMIN_PASSWORD`). La session est un
+cookie signé (HMAC-SHA256, sans état stocké côté serveur, format
+`email.expiration.signature` — parsé avec `rsplit(".", 2)` pour rester
+correct même quand l'email contient lui-même un point) posé sans attribut
+`Domain` — les cookies ne sont pas cloisonnés par port en HTTP, donc se
+connecter une fois sur `:8000` authentifie automatiquement les 6 autres
+ports. Chaque connexion réussie est journalisée (`auth.record_login()`,
+fichier `login_history.jsonl` à la racine) avec l'agent d'origine
+(`source_agent`), et notifie CrisisBot — ces événements de connexion réels
+peuvent aussi servir de données d'entrée réelles pour tester Sentinel (au
+lieu des seuls événements simulés). Se déconnecter via `/logout` sur
+n'importe lequel des 7 serveurs.
 
 Points d'entrée machine-à-machine (webhooks inter-agents, `/health`) restent
 toujours accessibles sans connexion — ils sont déjà protégés par leur propre
@@ -227,7 +236,9 @@ Ou chaque agent séparément (voir tableau des ports plus bas pour la commande e
 | SHAP | NetScope | Implemented | Aucune (local) |
 | WHOIS | PhishHunter (agent) | Implemented | Aucune clé (requêtes publiques) |
 | Active Directory / Entra ID | DarkWatch | Prepared | `email_sources.py::from_active_directory()`, prête pour une future implémentation |
-| Firewall/Proxy DNS réel | NetScope | Prepared | Remplacer `_pick_one_row()` dans `auto_scan.py` par une vraie source |
+| Résolution DNS réelle | NetScope | Implemented | Aucune (via `dnspython`, `live_features.py`) |
+| URLhaus (flux de menaces réel) | NetScope | Implemented | Aucune clé (téléchargement public, cache TTL 10 min) |
+| Firewall/Proxy DNS réel (production) | NetScope | Prepared | Démo locale déjà fonctionnelle (`dns_proxy.py` + `tail_bridge.py`), à remplacer par un vrai relais réseau d'entreprise |
 | Exchange / Google Workspace | PhishHunter | Prepared | `/webhook/email` fonctionnel, à connecter à une vraie boîte |
 | SIEM / Entra ID sign-in logs | Sentinel | Prepared | `/api/webhook/signin-event` fonctionnel, à connecter à une vraie source |
 | Teams, Email (CrisisBot) | CrisisBot | Conceptual | Jamais implémenté, seulement mentionné dans l'UI |
@@ -335,12 +346,12 @@ Points de branchement déjà préparés dans le code, non connectés faute d'acc
 - **Active Directory / Microsoft Graph** (DarkWatch) — `email_sources.py::from_active_directory()`.
 - **SIEM / Entra ID sign-in logs** (Sentinel) — `/api/webhook/signin-event` déjà fonctionnel mécaniquement.
 - **Exchange / Google Workspace** (PhishHunter) — `/webhook/email` déjà fonctionnel mécaniquement.
-- **Firewall/Proxy DNS réel** (NetScope) — `auto_scan.py::_pick_one_row()` isolé pour faciliter le remplacement.
+- **Firewall/Proxy DNS réel en production** (NetScope) — la démo locale (`dns_proxy.py` + `tail_bridge.py`, DNS d'un téléphone redirigé vers le PC) est déjà fonctionnelle ; reste à remplacer par un vrai relais réseau d'entreprise.
 
 ## Security Notes
 
-- Chaque projet a son propre `.env.example` (placeholders uniquement) et `.gitignore` (exclut `.env`). Ne jamais committer un `.env` réel.
-- Aucun dépôt Git local n'existe dans ce projet à ce jour — donc aucun secret n'a été poussé où que ce soit depuis cette machine.
+- Chaque projet a son propre `.env.example` (placeholders uniquement) et `.gitignore` (exclut `.env`). Ne jamais committer un `.env` réel — vérifié : aucun `.env` réel n'est suivi par Git, seuls les `.env.example` le sont.
+- Un dépôt Git existe et est poussé sur le GitLab interne d'Hydatis. Les modèles ML entraînés (`.pkl`, `.model`, `.npy`, `.joblib`) sont volontairement versionnés (pas de secret dedans, juste des poids de modèle) pour que le projet soit utilisable tel quel par un nouveau contributeur sans réentraînement.
 - Toutes les actions "d'isolement" ou de "reset" sont simulées (journalisées, jamais exécutées sur un vrai système) — voir Demo Mode ci-dessus.
 - Les webhooks entrants (NetScope, Sentinel) sont protégés par un secret partagé ; les échanges internes entre agents (`notify_crisisbot()`) et le webhook d'incident de CrisisBot utilisent le même principe best-effort simple que le reste de la démo, cohérent avec un environnement de test.
 
